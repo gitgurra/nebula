@@ -20,6 +20,9 @@
     --amber-line: #d9a94a;
     --amber-ink: #8a5a12;
     --amber-fill: #fdf3e0;
+    --ok-line: #7ca389;
+    --ok-ink: #2f6b4a;
+    --ok-fill: #edf4ef;
     --mono: ui-monospace, Menlo, Consolas, monospace;
   }
 
@@ -104,8 +107,24 @@
   }
   .verdict h3 { font-size: 19px; margin: 4px 0 0; }
   .verdict p { font-size: 13.5px; margin: 6px 0 0; color: rgba(29, 31, 32, 0.72); }
-  .verdict.is-pass { border-color: var(--rule); background: transparent; }
-  .verdict.is-pass .verdict-tag { color: var(--color-accent-700); }
+  .verdict.is-cleared { border-color: var(--ok-line); background: var(--ok-fill); }
+  .verdict.is-cleared .verdict-tag { color: var(--ok-ink); }
+
+  /* — collapsed checklist, shown instead of the full findings when nothing was found — */
+  .check-row {
+    display: grid; grid-template-columns: 16px 1fr auto; gap: 10px;
+    padding: 9px 0; align-items: center;
+    border-top: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  }
+  .check-mark { color: var(--ok-ink); font-size: 13px; line-height: 1; }
+  .check-row.is-flagged .check-mark { color: var(--amber-ink); }
+  .check-title { font-size: 14px; }
+  .check-outcome {
+    font-family: var(--font-heading); font-weight: 600; font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--ok-ink);
+  }
+  .check-row.is-flagged .check-outcome { color: var(--amber-ink); }
+  .checks > summary { color: var(--ok-ink); }
 
   /* — payment strip (clean invoices) — */
   .pay-strip {
@@ -413,6 +432,21 @@ function renderFinding(f, index) {
     </div>`;
 }
 
+/* One line per check, for the collapsed list. The evidence blocks are left out
+   on purpose: when the accounts agree there is nothing in them worth the space. */
+function renderCheckRow(f) {
+  const flagged = f.outcome !== "match";
+  return `
+    <div class="check-row ${flagged ? "is-flagged" : ""}">
+      <span class="check-mark">${flagged ? "!" : "✓"}</span>
+      <div>
+        <span class="check-title">${esc(f.title)}</span>
+        ${f.mocked ? `<span class="mocked-tag">MOCKED</span>` : ""}
+      </div>
+      <span class="check-outcome">${esc(f.outcomeLabel || f.outcome)}</span>
+    </div>`;
+}
+
 /* ── detail screen ────────────────────────────────────────────────────── */
 
 function renderDetail(inv) {
@@ -420,6 +454,10 @@ function renderDetail(inv) {
   const held = inv.status === "hold";
   const findings = c.findings || [];
   const firstFlagged = findings.findIndex((f) => f.outcome !== "match");
+  /* Held invoices show every check in full. So does anything with a finding
+     against it, even if it is not held - a check that found something must
+     never be the thing that stays folded away. */
+  const expanded = held || firstFlagged !== -1;
   const net = (inv.lines || []).reduce((sum, l) => sum + Number(l.amount), 0);
 
   crumb.textContent = `Invoices › Incoming › ${inv.number}`;
@@ -443,9 +481,9 @@ function renderDetail(inv) {
           <h3>${esc(c.headline)}</h3>
           <p>${esc(c.detail)}</p>
         </div>` : `
-        <div class="verdict is-pass">
-          <div class="verdict-tag">${esc(c.verdict)}</div>
-          <h3>All checks passed</h3>
+        <div class="verdict is-cleared">
+          <div class="verdict-tag">Cleared for payment</div>
+          <h3>${findings.length} checks passed</h3>
         </div>`}
 
       ${inv.payment ? `
@@ -456,12 +494,17 @@ function renderDetail(inv) {
           <div><div class="pay-k">Approver</div><div class="pay-v">${esc(inv.payment.approver)}</div></div>
         </div>` : ""}
 
-      <div class="findings">
-        ${findings.map((f, i) => `
-          ${i === firstFlagged && firstFlagged > 0
-            ? `<div class="findings-kicker">Extra checks — these are the ones that found something</div>` : ""}
-          ${renderFinding(f, i)}`).join("")}
-      </div>
+      ${expanded ? `
+        <div class="findings">
+          ${findings.map((f, i) => `
+            ${i === firstFlagged && firstFlagged > 0
+              ? `<div class="findings-kicker">Extra checks — these are the ones that found something</div>` : ""}
+            ${renderFinding(f, i)}`).join("")}
+        </div>` : `
+        <details class="block checks">
+          <summary>Checks (${findings.length} passed)</summary>
+          ${findings.map(renderCheckRow).join("")}
+        </details>`}
 
       ${inv.actions && inv.actions.logVerificationCall && inv.actions.logVerificationCall.available ? `
         <div class="blueprint call-panel">
