@@ -1,0 +1,106 @@
+{
+  "id": "2026-0433",
+  "number": "2026-0433",
+  "status": "pending",
+  "supplier": {
+    "name": "Almén Kontorsservice AB",
+    "orgNumber": "556652-3318",
+    "registerPhone": "+46 8 550 40 90",
+    "invoicePhone": "+46 8 550 40 90"
+  },
+  "dueDate": "2026-09-05",
+  "amount": { "value": "9640.00", "currency": "SEK" },
+  "lines": [
+    {
+      "description": "Office supplies, July",
+      "period": "2026-07",
+      "quantity": 1,
+      "unitPrice": "4512.00",
+      "amount": "4512.00"
+    },
+    {
+      "description": "Printer toner, HP 26X",
+      "period": "2026-07",
+      "quantity": 4,
+      "unitPrice": "800.00",
+      "amount": "3200.00"
+    }
+  ],
+  "vat": { "rate": "0.25", "value": "1928.00" },
+  "total": { "value": "9640.00", "currency": "SEK" },
+  "payment": null,
+  "bankDetailsCheck": {
+    "verdict": "pass",
+    "headline": null,
+    "detail": null,
+    "engine": "bank-details-check",
+    "version": "1.4",
+    "evaluatedAt": "2026-08-25T08:17:00+02:00",
+    "traceId": "38d09bf6-7455-470e-8a9c-861cd28205a3",
+    "findings": [
+      {
+        "code": "supplier_identity",
+        "title": "Supplier identity matches",
+        "detail": "Org number 556652-3318 on the invoice is the one held in the supplier register.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["ERP register"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "vop",
+        "title": "VoP (Verification of Payee)",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 881-3360.",
+        "outcome": "match",
+        "outcomeLabel": "Match",
+        "sources": ["Receiving bank"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "account_changed",
+        "title": "Account unchanged",
+        "detail": "The account on this invoice is the one this supplier has always been paid on.",
+        "outcome": "match",
+        "outcomeLabel": "Unchanged",
+        "sources": ["ERP history", "Bank transactions"],
+        "mocked": false,
+        "evidence": {
+          "registeredAccount": "881-3360",
+          "invoiceAccount": "881-3360",
+          "paymentCount": 27,
+          "lastPaidAt": "2026-08-06",
+          "firstSeenAt": "2024-02-14",
+          "rangeFrom": "2024-02",
+          "rangeTo": "2026-08"
+        }
+      },
+      {
+        "code": "account_owner",
+        "title": "Account owner matches",
+        "detail": "881-3360 resolves to Almén Kontorsservice AB 556652-3318.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["Account ownership"],
+        "mocked": true,
+        "evidence": {
+          "actual": {
+            "account": "881-3360",
+            "name": "Almén Kontorsservice AB",
+            "orgNumber": "556652-3318"
+          },
+          "expected": {
+            "name": "Almén Kontorsservice AB",
+            "orgNumber": "556652-3318"
+          }
+        }
+      }
+    ]
+  },
+  "actions": {
+    "logVerificationCall": { "available": false },
+    "keepOnHold": { "available": false },
+    "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }
+  }
+}

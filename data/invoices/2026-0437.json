@@ -1,0 +1,113 @@
+{
+  "id": "2026-0437",
+  "number": "2026-0437",
+  "status": "pending",
+  "supplier": {
+    "name": "Frösö Larmteknik AB",
+    "orgNumber": "556788-4402",
+    "registerPhone": "+46 63 12 74 50",
+    "invoicePhone": "+46 63 12 74 50"
+  },
+  "dueDate": "2026-09-12",
+  "amount": { "value": "55900.00", "currency": "SEK" },
+  "lines": [
+    {
+      "description": "Alarm system upgrade, phase 1",
+      "period": "2026-07",
+      "quantity": 1,
+      "unitPrice": "36000.00",
+      "amount": "36000.00"
+    },
+    {
+      "description": "Motion detectors, garage level",
+      "period": "2026-07",
+      "quantity": 8,
+      "unitPrice": "890.00",
+      "amount": "7120.00"
+    },
+    {
+      "description": "Callout, commissioning",
+      "period": "2026-07-29",
+      "quantity": 1,
+      "unitPrice": "1600.00",
+      "amount": "1600.00"
+    }
+  ],
+  "vat": { "rate": "0.25", "value": "11180.00" },
+  "total": { "value": "55900.00", "currency": "SEK" },
+  "payment": null,
+  "bankDetailsCheck": {
+    "verdict": "pass",
+    "headline": null,
+    "detail": null,
+    "engine": "bank-details-check",
+    "version": "1.4",
+    "evaluatedAt": "2026-08-25T09:21:00+02:00",
+    "traceId": "e6e9d912-e4ec-4e85-a153-39d48ee29bd4",
+    "findings": [
+      {
+        "code": "supplier_identity",
+        "title": "Supplier identity matches",
+        "detail": "Org number 556788-4402 on the invoice is the one held in the supplier register.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["ERP register"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "vop",
+        "title": "VoP (Verification of Payee)",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 942-6613.",
+        "outcome": "match",
+        "outcomeLabel": "Match",
+        "sources": ["Receiving bank"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "account_changed",
+        "title": "Account unchanged",
+        "detail": "The account on this invoice is the one this supplier has always been paid on.",
+        "outcome": "match",
+        "outcomeLabel": "Unchanged",
+        "sources": ["ERP history", "Bank transactions"],
+        "mocked": false,
+        "evidence": {
+          "registeredAccount": "942-6613",
+          "invoiceAccount": "942-6613",
+          "paymentCount": 4,
+          "lastPaidAt": "2026-07-15",
+          "firstSeenAt": "2026-01-20",
+          "rangeFrom": "2026-01",
+          "rangeTo": "2026-07"
+        }
+      },
+      {
+        "code": "account_owner",
+        "title": "Account owner matches",
+        "detail": "942-6613 resolves to Frösö Larmteknik AB 556788-4402.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["Account ownership"],
+        "mocked": true,
+        "evidence": {
+          "actual": {
+            "account": "942-6613",
+            "name": "Frösö Larmteknik AB",
+            "orgNumber": "556788-4402"
+          },
+          "expected": {
+            "name": "Frösö Larmteknik AB",
+            "orgNumber": "556788-4402"
+          }
+        }
+      }
+    ]
+  },
+  "actions": {
+    "logVerificationCall": { "available": false },
+    "keepOnHold": { "available": false },
+    "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }
+  }
+}
