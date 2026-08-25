@@ -257,9 +257,10 @@
 <script>
 "use strict";
 
+const API_BASE = "http://localhost:8000";
 const API = {
-  list:   "data/invoices.json",
-  detail: (id) => `data/invoices/${id}.json`,
+  list:   `${API_BASE}/invoices`,
+  detail: (id) => `${API_BASE}/invoices/${encodeURIComponent(id)}`,
 };
 
 const view    = document.getElementById("view");
@@ -542,17 +543,12 @@ function renderLoading() {
 }
 
 function renderError(error, url) {
-  const isFileProtocol = location.protocol === "file:";
   view.innerHTML = `
     <div class="state">
       <h3>Could not load ${esc(url)}</h3>
       <p>${esc(error.message)}</p>
-      ${isFileProtocol ? `
-        <p>The page is open over <code>file://</code>, which blocks reading local
-        JSON. Serve the folder over HTTP instead:</p>
-        <p><code>python3 -m http.server</code> in the project root, then open
-        <code>http://localhost:8000/</code>.</p>`
-        : `<p>Check that the file exists and that the server is running from the project root.</p>`}
+      <p>Make sure the invoices API is running: <code>make up</code> (or
+      <code>uvicorn nebula.api:app --reload --port 8000</code>) in the project root.</p>
     </div>`;
 }
 
