@@ -27,7 +27,13 @@ def main(argv: list[str] | None = None) -> int:
         "command",
         nargs="?",
         default="hello",
-        choices=["hello", "open-payments", "zwapgrid", "create-consent"],
+        choices=[
+            "hello",
+            "open-payments",
+            "zwapgrid",
+            "create-consent",
+            "zwapgrid_create_invoices",
+        ],
         help="Which sandbox to call. Defaults to 'hello', which calls both.",
     )
     parser.add_argument("--json", action="store_true", help="Print raw JSON responses.")
@@ -44,6 +50,12 @@ def main(argv: list[str] | None = None) -> int:
             "dummy system) or fortnox. Use 'any' to let the customer choose."
         ),
     )
+    parser.add_argument(
+        "--count",
+        type=int,
+        default=1,
+        help="Number of invoices to create when running 'zwapgrid_create_invoices'.",
+    )
     args = parser.parse_args(argv)
 
     load_env()
@@ -55,6 +67,9 @@ def main(argv: list[str] | None = None) -> int:
         "hello": [run_open_payments, run_zwapgrid],
         "open-payments": [run_open_payments],
         "zwapgrid": [run_zwapgrid],
+        "zwapgrid_create_invoices": [
+            lambda as_json: zwapgrid_create_invoices(as_json, args.count)
+        ],
     }
 
     results = [runner(args.json) for runner in runners[args.command]]
@@ -117,7 +132,8 @@ def run_zwapgrid(as_json: bool) -> bool:
                 return True
 
             print(f"\nUsing accepted consent {accepted['id']} (source={accepted.get('source')}).")
-            company = client.get_company_information(accepted["id"])
+
+            company = client.get_company_information(consent_id=accepted["id"])
             print("Company information:")
             if as_json:
                 _dump(company)
@@ -127,6 +143,76 @@ def run_zwapgrid(as_json: bool) -> bool:
                 company_id = (legal_entity.get("companyId") or {}).get("id")
                 print(f"  name:       {party_name}")
                 print(f"  company id: {company_id}")
+    except (ConfigError, ZwapgridError) as error:
+        return _fail(error)
+    return True
+
+def zwapgrid_create_invoices(as_json: bool, count: int = 1) -> bool:
+    """List consents and create `count` supplier invoices on the accepted one, if there is one."""
+    _header("Zwapgrid")
+    try:
+        settings = load_zwapgrid_settings()
+        with ZwapgridClient(settings, timeout=request_timeout_seconds()) as client:
+            print(f"Consents API:   {settings.consents_base_url}")
+            print(f"Accounting API: {settings.accounting_base_url}")
+
+            page = client.list_consents()
+            consents = page.get("data") or []
+            total = (page.get("meta") or {}).get("totalResources", len(consents))
+            print(f"Found {total} consent(s), showing {len(consents)}:")
+            if as_json:
+                _dump(page)
+            else:
+                for consent in consents:
+                    print(
+                        f"  - {consent.get('id')}  {consent.get('name')} "
+                        f"(status={_status_name(consent.get('status'))}, "
+                        f"source={consent.get('source')})"
+                    )
+
+            accepted = client.find_accepted_consent()
+            if accepted is None:
+                print(
+                    "\nNo accepted consent yet, so there is no ERP data to read. "
+                    "Run 'python -m nebula create-consent' and complete the Onboarding Flow."
+                )
+                return True
+
+            print(f"\nUsing accepted consent {accepted['id']} (source={accepted.get('source')}).")
+
+            print(f"Creating {count} supplier invoice(s)")
+
+            for i in range(count):
+                invoice_number = f"INV-{i + 1:03d}"
+                supplier_invoice = client.create_supplier_invoice(
+                    consent_id=accepted["id"],
+                    invoice={
+                        "invoiceNumber": invoice_number,
+                        "supplierId": "supplier-123",
+                        "invoiceDate": "2026-08-25",
+                        "dueDate": "2026-09-30",
+                        "currency": "SEK",
+                        "totalAmount": 1000.0,
+                        "paymentMeans": [
+                            {
+                            "paymentIds": [
+                                {
+                                    "id": "12345678",
+                                    "schemeId": "987654321"
+                                }
+                            ]
+                            }
+                        ]
+                    },
+                )
+                print(f"New invoice ({invoice_number}): {supplier_invoice}")
+
+            supplier_invoices = client.get_supplier_invoices(consent_id=accepted["id"])
+            print("Supplier invoices:")
+
+            if as_json:
+                _dump(supplier_invoices)
+
     except (ConfigError, ZwapgridError) as error:
         return _fail(error)
     return True
