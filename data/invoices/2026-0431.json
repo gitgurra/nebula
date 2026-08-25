@@ -1,0 +1,122 @@
+{
+  "id": "2026-0431",
+  "number": "2026-0431",
+  "status": "hold",
+  "supplier": {
+    "name": "Nordvik Bygg & Ventilation AB",
+    "orgNumber": "556734-1092",
+    "registerPhone": "+46 8 550 12 40",
+    "invoicePhone": "+46 70 992 41 88"
+  },
+  "dueDate": "2026-09-04",
+  "amount": { "value": "184250.00", "currency": "SEK" },
+  "lines": [
+    {
+      "description": "Ventilation service, Kv. Almen 4",
+      "period": "2026-07",
+      "quantity": 1,
+      "unitPrice": "96000.00",
+      "amount": "96000.00"
+    },
+    {
+      "description": "Filter replacement, units A1–A6",
+      "period": "2026-07",
+      "quantity": 6,
+      "unitPrice": "7250.00",
+      "amount": "43500.00"
+    },
+    {
+      "description": "Callout, night rate",
+      "period": "2026-07-22",
+      "quantity": 4,
+      "unitPrice": "2900.00",
+      "amount": "11600.00"
+    }
+  ],
+  "vat": { "rate": "0.25", "value": "33150.00" },
+  "total": { "value": "184250.00", "currency": "SEK" },
+  "payment": null,
+  "bankDetailsCheck": {
+    "verdict": "hold",
+    "headline": "The bank account on this invoice is not the one you have always paid",
+    "detail": "Payment stays out of the signing queue until the change is verified with the supplier.",
+    "engine": "bank-details-check",
+    "version": "1.4",
+    "evaluatedAt": "2026-08-25T09:14:00+02:00",
+    "traceId": "8f31c0a4-92de-4d17-b6a1-05e7c3ff2b18",
+    "findings": [
+      {
+        "code": "supplier_identity",
+        "title": "Supplier identity matches",
+        "detail": "Org number 556734-1092 on the invoice is the one held in the supplier register.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["ERP register"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "vop",
+        "title": "VoP (Verification of Payee)",
+        "detail": "Runs on every payment before release. The receiving bank confirms the payee name on the instruction matches the holder of 987-6543. This check passes — it says nothing about whether the account is the right one.",
+        "outcome": "match",
+        "outcomeLabel": "Match",
+        "sources": ["Receiving bank"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "account_changed",
+        "title": "Account changed after 30 payments",
+        "detail": "Two independent sources, one baseline account.",
+        "outcome": "changed",
+        "outcomeLabel": "Changed",
+        "sources": ["ERP history", "Bank transactions"],
+        "mocked": false,
+        "evidence": {
+          "registeredAccount": "123-4567",
+          "invoiceAccount": "987-6543",
+          "paymentCount": 30,
+          "lastPaidAt": "2026-08-04",
+          "firstSeenAt": "2026-08-25",
+          "rangeFrom": "2026-03",
+          "rangeTo": "2026-08"
+        }
+      },
+      {
+        "code": "account_owner",
+        "title": "New account owner differs",
+        "detail": "987-6543 resolves to Nordvik Konsult AB 556789-1122.",
+        "outcome": "differs",
+        "outcomeLabel": "Differs",
+        "sources": ["Account ownership"],
+        "mocked": true,
+        "evidence": {
+          "actual": {
+            "account": "987-6543",
+            "name": "Nordvik Konsult AB",
+            "orgNumber": "556789-1122"
+          },
+          "expected": {
+            "name": "Nordvik Bygg & Ventilation AB",
+            "orgNumber": "556734-1092"
+          }
+        }
+      }
+    ]
+  },
+  "actions": {
+    "logVerificationCall": {
+      "available": true,
+      "callNumber": "+46 8 550 12 40",
+      "detail": "From the supplier register — not the number on the invoice (+46 70 992 41 88). If the invoice is fraudulent, that number answers as the supplier."
+    },
+    "keepOnHold": { "available": true },
+    "release": {
+      "available": true,
+      "requiresReason": true,
+      "requiresSecondApprover": true,
+      "detail": "Releasing against a failed ownership check requires a written reason and a second approver."
+    }
+  }
+}

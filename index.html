@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kontobok — Incoming invoices</title>
+<link rel="stylesheet" href="assets/industry.css">
+<style>
+  /* Page shell and screen-specific classes. The design tokens and the
+     component classes (.table, .btn, .blueprint, .tag) come from
+     assets/industry.css, extracted from the design canvas export. */
+
+  :root {
+    --nav-bg: #1d2d3d;
+    --nav-fg: #f2f2f3;
+    --nav-accent: #94bce3;
+    --nav-badge: #f0c874;
+    --crumb-bg: #e9ecf0;
+    --rule: rgba(29, 31, 32, 0.16);
+    --amber-line: #d9a94a;
+    --amber-ink: #8a5a12;
+    --amber-fill: #fdf3e0;
+    --mono: ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  body { background: var(--color-bg); }
+
+  .shell {
+    width: 1200px; margin: 0 auto; min-height: 100vh;
+    display: grid; grid-template-columns: 176px 1fr;
+    border-left: 1px solid var(--rule); border-right: 1px solid var(--rule);
+  }
+
+  /* — sidebar — */
+  .nav-rail {
+    background: var(--nav-bg); color: var(--nav-fg);
+    padding: 20px 0 40px; display: flex; flex-direction: column; gap: 22px;
+  }
+  .nav-brand-row {
+    padding: 0 18px 16px; font-family: var(--font-heading); font-weight: 600;
+    font-size: 17px; letter-spacing: 0.02em;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid rgba(242, 242, 243, 0.18);
+  }
+  .nav-mark { width: 9px; height: 9px; border: 1.5px solid var(--nav-accent); display: block; }
+  .nav-links { display: flex; flex-direction: column; }
+  .nav-links a {
+    padding: 7px 18px; font-size: 14px; text-decoration: none;
+    color: rgba(242, 242, 243, 0.72);
+  }
+  .nav-links a.is-active {
+    padding: 7px 16px; color: var(--nav-fg); background: rgba(242, 242, 243, 0.09);
+    border-left: 2px solid var(--nav-accent);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .nav-badge { font-family: var(--mono); font-size: 11px; color: var(--nav-badge); }
+  .nav-foot {
+    margin-top: auto; padding: 0 18px; font-family: var(--mono);
+    font-size: 10px; color: rgba(242, 242, 243, 0.45);
+  }
+
+  /* — main column — */
+  main { padding: 0 40px 56px; }
+  .crumb-bar {
+    margin: 0 -40px 24px; padding: 8px 40px;
+    background: var(--crumb-bg); border-bottom: 1px solid var(--rule);
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: rgba(29, 31, 32, 0.6);
+    font-family: var(--font-heading); letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .crumb-check { color: var(--color-accent-700); }
+
+  .screen { max-width: 940px; }
+  .screen-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .screen-head h2 { font-size: 26px; margin: 0; letter-spacing: -0.01em; }
+  .screen-sub { font-size: 14px; color: rgba(29, 31, 32, 0.65); margin-top: 4px; }
+
+  /* — invoice list — */
+  .invoice-table { margin-top: 20px; }
+  .invoice-table tbody { font-variant-numeric: tabular-nums; }
+  .invoice-table tbody tr { cursor: pointer; }
+  .invoice-table tbody tr:hover { background: var(--crumb-bg); }
+  .invoice-table td.num { font-family: var(--mono); }
+  .invoice-table td.amount { text-align: right; font-family: var(--mono); }
+  .invoice-table td.supplier { border-left: 2px solid transparent; }
+  .invoice-table tr[data-invoice-row="hold"] td.supplier { border-left-color: var(--amber-line); }
+  .invoice-table td.status {
+    font-family: var(--font-heading); font-weight: 600; font-size: 12px;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber-ink);
+  }
+
+  /* — detail header — */
+  .detail-head { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
+  .detail-head h2 { font-size: 26px; margin: 0; letter-spacing: -0.01em; }
+  .detail-meta { font-family: var(--mono); font-size: 12px; color: rgba(29, 31, 32, 0.55); margin-top: 3px; }
+
+  .verdict {
+    margin-top: 20px; padding: 14px 16px;
+    border: 1px solid var(--amber-line); background: var(--amber-fill);
+  }
+  .verdict-tag {
+    font-family: var(--font-heading); font-weight: 600; font-size: 12px;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber-ink);
+  }
+  .verdict h3 { font-size: 19px; margin: 4px 0 0; }
+  .verdict p { font-size: 13.5px; margin: 6px 0 0; color: rgba(29, 31, 32, 0.72); }
+  .verdict.is-pass { border-color: var(--rule); background: transparent; }
+  .verdict.is-pass .verdict-tag { color: var(--color-accent-700); }
+
+  /* — payment strip (clean invoices) — */
+  .pay-strip {
+    margin-top: 20px; display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+  }
+  .pay-strip > div { background: var(--color-bg); padding: 11px 14px; }
+  .pay-k {
+    font-family: var(--font-heading); font-weight: 600; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: rgba(29, 31, 32, 0.5);
+  }
+  .pay-v { font-family: var(--mono); font-size: 15px; margin-top: 2px; }
+
+  /* — findings — */
+  .findings { margin-top: 26px; }
+  .findings-kicker {
+    font-family: var(--font-heading); font-weight: 600; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: rgba(29, 31, 32, 0.5); margin-bottom: 4px;
+  }
+  .finding {
+    display: grid; grid-template-columns: 28px 1fr 104px; gap: 16px;
+    padding: 16px 0 20px; border-top: 1px solid var(--rule); align-items: start;
+  }
+  .finding-no {
+    width: 22px; height: 22px; border: 1px solid var(--rule);
+    color: rgba(29, 31, 32, 0.55); display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-heading); font-weight: 600; font-size: 13px;
+  }
+  .finding.is-flagged .finding-no { border-color: var(--amber-line); color: var(--amber-ink); }
+  .finding-title { font-family: var(--font-heading); font-weight: 600; font-size: 17px; }
+  .finding-detail { font-size: 13.5px; line-height: 1.55; margin-top: 5px; color: rgba(29, 31, 32, 0.72); }
+  .finding-outcome {
+    text-align: right; font-family: var(--font-heading); font-weight: 600; font-size: 12px;
+    letter-spacing: 0.08em; text-transform: uppercase; color: rgba(29, 31, 32, 0.5);
+  }
+  .finding.is-flagged .finding-outcome { color: var(--amber-ink); }
+  .sources { display: flex; gap: 7px; margin-top: 11px; align-items: center; flex-wrap: wrap; }
+  .source-tag {
+    font-family: var(--font-heading); font-weight: 600; font-size: 11px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    border: 1px solid rgba(29, 31, 32, 0.28); padding: 2px 7px; color: rgba(29, 31, 32, 0.65);
+  }
+  .mocked-tag {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+    color: var(--color-neutral-700); border: 1px solid var(--color-neutral-400); padding: 2px 6px;
+  }
+  .sources-note { font-size: 12px; color: rgba(29, 31, 32, 0.55); }
+
+  /* — evidence: before/after account pair — */
+  .pair {
+    display: grid; grid-template-columns: 1fr 26px 1fr; align-items: center;
+    margin-top: 12px; border: 1px solid var(--amber-line);
+  }
+  .pair > div { padding: 11px 14px; }
+  .pair-arrow { text-align: center; color: var(--amber-ink); font-size: 15px; padding: 0; }
+  .pair-old { background: var(--amber-fill); }
+  .pair-new { border-left: 1px solid var(--amber-line); }
+  .pair-k {
+    font-family: var(--font-heading); font-weight: 600; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: rgba(29, 31, 32, 0.5);
+  }
+  .pair-old .pair-k { color: var(--amber-ink); }
+  .pair-account { font-family: var(--mono); font-size: 20px; margin-top: 2px; }
+  .pair-name { font-family: var(--font-heading); font-weight: 600; font-size: 18px; margin-top: 2px; }
+  .pair-sub { font-family: var(--mono); font-size: 12px; color: rgba(29, 31, 32, 0.55); }
+  .pair.is-match { border-color: var(--rule); }
+  .pair.is-match .pair-old { background: transparent; }
+  .pair.is-match .pair-new { border-left-color: var(--rule); }
+  .pair.is-match .pair-arrow, .pair.is-match .pair-old .pair-k { color: rgba(29, 31, 32, 0.5); }
+
+  /* — evidence: payment history dots — */
+  .dots { display: flex; gap: 3px; margin-top: 11px; align-items: center; flex-wrap: wrap; }
+  .dot-paid { width: 7px; height: 7px; background: var(--color-neutral-400); display: block; }
+  .dot-held { width: 7px; height: 7px; background: var(--amber-line); display: block; }
+  .dots-note { font-size: 12px; color: rgba(29, 31, 32, 0.55); margin-top: 7px; }
+
+  /* — call panel — */
+  .call-panel {
+    max-width: 900px; margin-top: 30px; padding: 20px 22px;
+    display: grid; grid-template-columns: 1fr 268px; gap: 26px; align-items: center;
+  }
+  .call-k {
+    font-family: var(--font-heading); font-weight: 600; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: rgba(29, 31, 32, 0.5);
+  }
+  .call-number { font-family: var(--mono); font-size: 26px; font-variant-numeric: tabular-nums; margin-top: 3px; }
+  .call-note { font-size: 13px; line-height: 1.5; margin-top: 6px; color: rgba(29, 31, 32, 0.7); }
+  .call-actions { display: flex; flex-direction: column; gap: 8px; }
+  .action-note {
+    margin-top: 14px; padding: 10px 12px; font-size: 13px;
+    border-left: 2px solid var(--color-accent); background: var(--color-surface);
+  }
+
+  /* — lines, totals, footer — */
+  details.block { margin-top: 28px; }
+  details.block > summary {
+    cursor: pointer; font-family: var(--font-heading); font-weight: 600; font-size: 13px;
+    letter-spacing: 0.06em; text-transform: uppercase; color: rgba(29, 31, 32, 0.6);
+    padding: 8px 0; border-top: 1px solid var(--rule);
+  }
+  .lines-table { margin: 10px 0 14px; }
+  .lines-table tbody { font-variant-numeric: tabular-nums; font-family: var(--mono); }
+  .lines-table td.desc { font-family: var(--font-body); }
+  .lines-table td.r { text-align: right; }
+  .totals { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; font-family: var(--mono); font-size: 14px; }
+  .totals .grand { font-size: 17px; }
+  .override-note { font-size: 13px; color: rgba(29, 31, 32, 0.7); padding: 4px 0 0; }
+  .trace {
+    font-family: var(--mono); font-size: 10px; color: rgba(29, 31, 32, 0.35);
+    margin-top: 30px; padding-top: 10px; border-top: 1px solid var(--rule);
+  }
+
+  /* — loading and failure — */
+  .state { padding: 28px 0; }
+  .state h3 { font-size: 19px; margin: 0 0 6px; }
+  .state p { font-size: 14px; color: rgba(29, 31, 32, 0.7); max-width: 620px; }
+  .state code {
+    font-family: var(--mono); font-size: 12.5px;
+    background: var(--color-surface); padding: 1px 5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <nav class="nav-rail">
+    <div class="nav-brand-row"><span class="nav-mark"></span>Kontobok</div>
+    <div class="nav-links">
+      <a href="#">Overview</a>
+      <a href="#">Suppliers</a>
+      <a href="#/invoices" class="is-active">Invoices <span class="nav-badge" id="nav-count"></span></a>
+      <a href="#">Payments</a>
+      <a href="#">Signing</a>
+      <a href="#">Audit log</a>
+    </div>
+    <div class="nav-foot" id="nav-foot"></div>
+  </nav>
+
+  <main>
+    <div class="crumb-bar">
+      <span id="crumb">Invoices › Incoming</span>
+      <span class="crumb-check">Bank details check active</span>
+    </div>
+    <div id="view"></div>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+const API = {
+  list:   "data/invoices.json",
+  detail: (id) => `data/invoices/${id}.json`,
+};
+
+const view    = document.getElementById("view");
+const crumb   = document.getElementById("crumb");
+const navCount = document.getElementById("nav-count");
+const navFoot  = document.getElementById("nav-foot");
+
+/* The list response is cached so moving between the list and a detail view
+   does not refetch it; meta drives the sidebar on every screen. */
+let listCache = null;
+
+const money = new Intl.NumberFormat("sv-SE", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const fmt = (amount) => amount == null ? "" : money.format(Number(amount));
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => (
+  { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+));
+
+async function getJSON(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
+  return res.json();
+}
+
+/* ── shell chrome ─────────────────────────────────────────────────────── */
+
+function paintShell(meta) {
+  if (!meta) return;
+  const hold = meta.counts && meta.counts.hold;
+  navCount.textContent = hold ? String(hold) : "";
+  if (meta.tenant && meta.tenant.name) {
+    navFoot.innerHTML = `${esc(meta.tenant.name)}<br>period ${esc(meta.period)}`;
+  }
+}
+
+/* ── list screen ──────────────────────────────────────────────────────── */
+
+function renderList(payload) {
+  const rows = payload.data || [];
+  const awaiting = (payload.meta && payload.meta.counts && payload.meta.counts.awaitingVerification) || 0;
+
+  crumb.textContent = "Invoices › Incoming";
+  view.innerHTML = `
+    <div class="screen">
+      <div class="screen-head"><h2>Incoming invoices</h2></div>
+      <div class="screen-sub">${awaiting} faktura${awaiting === 1 ? "" : "r"} väntar på verifiering</div>
+
+      <table class="table invoice-table">
+        <thead>
+          <tr>
+            <th>Supplier</th>
+            <th style="width:120px">Invoice</th>
+            <th style="width:120px">Due</th>
+            <th style="width:150px;text-align:right">Amount</th>
+            <th style="width:120px">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((r) => `
+            <tr data-invoice-row="${r.status === "hold" ? "hold" : "default"}" data-id="${esc(r.id)}">
+              <td class="supplier">${esc(r.supplier.name)}</td>
+              <td class="num">${esc(r.number)}</td>
+              <td class="num">${esc(r.dueDate)}</td>
+              <td class="amount">${fmt(r.amount.value)}</td>
+              <td class="status">${esc(r.statusLabel)}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+
+  view.querySelectorAll("tr[data-id]").forEach((tr) => {
+    tr.addEventListener("click", () => { location.hash = `#/invoices/${tr.dataset.id}`; });
+  });
+}
+
+/* ── findings ─────────────────────────────────────────────────────────── */
+
+/* A finding renders from its shape, not from its position: the account pair
+   and the owner comparison appear whenever the evidence carries those keys,
+   so a fifth check needs no change here. */
+function renderEvidence(f) {
+  const e = f.evidence;
+  if (!e) return "";
+  const flagged = f.outcome !== "match";
+
+  if (e.registeredAccount && e.invoiceAccount) {
+    const held = e.paymentCount + 1;
+    return `
+      <div class="pair ${flagged ? "" : "is-match"}">
+        <div class="pair-old">
+          <div class="pair-k">Paid until now</div>
+          <div class="pair-account">${esc(e.registeredAccount)}</div>
+          <div class="pair-sub">${e.paymentCount} payments · last ${esc(e.lastPaidAt)}</div>
+        </div>
+        <div class="pair-arrow">→</div>
+        <div class="pair-new">
+          <div class="pair-k">On this invoice</div>
+          <div class="pair-account">${esc(e.invoiceAccount)}</div>
+          <div class="pair-sub">First seen ${esc(e.firstSeenAt)}</div>
+        </div>
+      </div>
+      <div class="dots">
+        ${Array.from({ length: e.paymentCount }, () => `<span class="dot-paid"></span>`).join("")}
+        ${flagged ? `<span class="dot-held"></span>` : ""}
+      </div>
+      <div class="dots-note">
+        ${e.paymentCount} payments to ${esc(e.registeredAccount)},
+        ${esc(e.rangeFrom)} → ${esc(e.rangeTo)}${flagged ? ` · invoice ${held} held` : ""}
+      </div>`;
+  }
+
+  if (e.actual && e.expected) {
+    return `
+      <div class="pair ${flagged ? "" : "is-match"}">
+        <div class="pair-old">
+          <div class="pair-k">${esc(e.actual.account)} resolves to</div>
+          <div class="pair-name">${esc(e.actual.name)}</div>
+          <div class="pair-sub">${esc(e.actual.orgNumber)}</div>
+        </div>
+        <div class="pair-arrow">${flagged ? "≠" : "="}</div>
+        <div class="pair-new">
+          <div class="pair-k">Expected</div>
+          <div class="pair-name">${esc(e.expected.name)}</div>
+          <div class="pair-sub">${esc(e.expected.orgNumber)}</div>
+        </div>
+      </div>`;
+  }
+  return "";
+}
+
+function renderFinding(f, index) {
+  const flagged = f.outcome !== "match";
+  return `
+    <div class="finding ${flagged ? "is-flagged" : ""}">
+      <span class="finding-no">${index + 1}</span>
+      <div>
+        <div class="finding-title">${esc(f.title)}</div>
+        ${f.detail ? `<div class="finding-detail">${esc(f.detail)}</div>` : ""}
+        ${renderEvidence(f)}
+        <div class="sources">
+          ${(f.sources || []).map((s) => `<span class="source-tag">${esc(s)}</span>`).join("")}
+          ${f.mocked ? `<span class="mocked-tag">MOCKED</span>` : ""}
+          ${(f.sources || []).length > 1
+            ? `<span class="sources-note">Two independent sources, one baseline account</span>` : ""}
+        </div>
+      </div>
+      <div class="finding-outcome">${esc(f.outcomeLabel || f.outcome)}</div>
+    </div>`;
+}
+
+/* ── detail screen ────────────────────────────────────────────────────── */
+
+function renderDetail(inv) {
+  const c = inv.bankDetailsCheck || {};
+  const held = inv.status === "hold";
+  const findings = c.findings || [];
+  const firstFlagged = findings.findIndex((f) => f.outcome !== "match");
+  const net = (inv.lines || []).reduce((sum, l) => sum + Number(l.amount), 0);
+
+  crumb.textContent = `Invoices › Incoming › ${inv.number}`;
+
+  view.innerHTML = `
+    <div class="screen">
+      <div class="detail-head">
+        <div>
+          <h2>${esc(inv.supplier.name)}</h2>
+          <div class="detail-meta">
+            ${esc(inv.supplier.orgNumber)} · invoice ${esc(inv.number)} ·
+            ${fmt(inv.total.value)} ${esc(inv.total.currency)}
+          </div>
+        </div>
+        <a class="btn btn-ghost" href="#/invoices" style="font-size:12px">← All invoices</a>
+      </div>
+
+      ${held ? `
+        <div class="verdict">
+          <div class="verdict-tag">Hold</div>
+          <h3>${esc(c.headline)}</h3>
+          <p>${esc(c.detail)}</p>
+        </div>` : `
+        <div class="verdict is-pass">
+          <div class="verdict-tag">${esc(c.verdict)}</div>
+          <h3>All checks passed</h3>
+        </div>`}
+
+      ${inv.payment ? `
+        <div class="pay-strip">
+          <div><div class="pay-k">Status</div><div class="pay-v">${esc(inv.payment.statusLabel)}</div></div>
+          <div><div class="pay-k">Payment date</div><div class="pay-v">${esc(inv.payment.paymentDate)}</div></div>
+          <div><div class="pay-k">Account</div><div class="pay-v">${esc(inv.payment.account)}</div></div>
+          <div><div class="pay-k">Approver</div><div class="pay-v">${esc(inv.payment.approver)}</div></div>
+        </div>` : ""}
+
+      <div class="findings">
+        ${findings.map((f, i) => `
+          ${i === firstFlagged && firstFlagged > 0
+            ? `<div class="findings-kicker">Extra checks — these are the ones that found something</div>` : ""}
+          ${renderFinding(f, i)}`).join("")}
+      </div>
+
+      ${inv.actions && inv.actions.logVerificationCall && inv.actions.logVerificationCall.available ? `
+        <div class="blueprint call-panel">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div>
+            <div class="call-k">Call the supplier on the register number</div>
+            <div class="call-number">${esc(inv.actions.logVerificationCall.callNumber)}</div>
+            <div class="call-note">${esc(inv.actions.logVerificationCall.detail)}</div>
+          </div>
+          <div class="call-actions">
+            <button class="btn btn-primary btn-block" data-act="call">Log verification call</button>
+            <button class="btn btn-secondary btn-block" data-act="hold">Keep on hold</button>
+          </div>
+        </div>
+        <div id="action-note"></div>` : ""}
+
+      <details class="block">
+        <summary>Invoice lines (${(inv.lines || []).length})</summary>
+        <table class="table lines-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th style="width:110px">Period</th>
+              <th style="width:60px;text-align:right">Qty</th>
+              <th style="width:120px;text-align:right">Unit price</th>
+              <th style="width:140px;text-align:right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(inv.lines || []).map((l) => `
+              <tr>
+                <td class="desc">${esc(l.description)}</td>
+                <td>${esc(l.period)}</td>
+                <td class="r">${esc(l.quantity)}</td>
+                <td class="r">${fmt(l.unitPrice)}</td>
+                <td class="r">${fmt(l.amount)}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+        <div class="totals">
+          <div>Net ${fmt(net)}</div>
+          <div>VAT ${Math.round(Number(inv.vat.rate) * 100)}% ${fmt(inv.vat.value)}</div>
+          <div class="grand">Total ${fmt(inv.total.value)} ${esc(inv.total.currency)}</div>
+        </div>
+      </details>
+
+      ${inv.actions && inv.actions.release && inv.actions.release.available ? `
+        <details class="block">
+          <summary>Release payment anyway</summary>
+          <div class="override-note">
+            ${esc(inv.actions.release.detail)}
+            <div style="margin-top:10px"><button class="btn btn-secondary" data-act="override">Request override</button></div>
+          </div>
+        </details>` : ""}
+
+      <div class="trace">
+        trace ${esc(c.traceId)}<br>
+        ${esc(c.engine)} v${esc(c.version)} · ${esc(c.evaluatedAt)}
+      </div>
+    </div>`;
+
+  const note = document.getElementById("action-note");
+  const say = (text) => { if (note) note.innerHTML = `<div class="action-note">${esc(text)}</div>`; };
+  const messages = {
+    call: "Call logged to the audit trail. Outcome pending — the hold stays until someone records what the supplier said.",
+    hold: "Kept on hold. The invoice stays out of the signing queue and the supplier is not notified.",
+    override: "Override requested. It needs a written reason and a second approver before the payment can be released.",
+  };
+  view.querySelectorAll("[data-act]").forEach((b) => {
+    b.addEventListener("click", () => say(messages[b.dataset.act]));
+  });
+}
+
+/* ── states ───────────────────────────────────────────────────────────── */
+
+function renderLoading() {
+  view.innerHTML = `<div class="state"><p class="text-muted">Loading…</p></div>`;
+}
+
+function renderError(error, url) {
+  const isFileProtocol = location.protocol === "file:";
+  view.innerHTML = `
+    <div class="state">
+      <h3>Could not load ${esc(url)}</h3>
+      <p>${esc(error.message)}</p>
+      ${isFileProtocol ? `
+        <p>The page is open over <code>file://</code>, which blocks reading local
+        JSON. Serve the folder over HTTP instead:</p>
+        <p><code>python3 -m http.server</code> in the project root, then open
+        <code>http://localhost:8000/</code>.</p>`
+        : `<p>Check that the file exists and that the server is running from the project root.</p>`}
+    </div>`;
+}
+
+/* ── router ───────────────────────────────────────────────────────────── */
+
+async function route() {
+  const match = location.hash.match(/^#\/invoices\/(.+)$/);
+  renderLoading();
+
+  try {
+    if (!listCache) listCache = await getJSON(API.list);
+    paintShell(listCache.meta);
+  } catch (error) {
+    return renderError(error, API.list);
+  }
+
+  if (!match) return renderList(listCache);
+
+  const id = decodeURIComponent(match[1]);
+  try {
+    renderDetail(await getJSON(API.detail(id)));
+  } catch (error) {
+    crumb.textContent = `Invoices › Incoming › ${id}`;
+    renderError(error, API.detail(id));
+  }
+}
+
+window.addEventListener("hashchange", route);
+route();
+</script>
+
+</body>
+</html>

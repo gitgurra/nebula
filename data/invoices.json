@@ -1,0 +1,111 @@
+{
+  "data": [
+    {
+      "id": "2026-0424",
+      "number": "2026-0424",
+      "supplier": { "name": "Bergslund Trä AB", "orgNumber": "556301-7742" },
+      "dueDate": "2026-09-01",
+      "amount": { "value": "62400.00", "currency": "SEK" },
+      "status": "pending",
+      "statusLabel": "",
+      "href": "/api/v1/invoices/2026-0424"
+    },
+    {
+      "id": "2026-0429",
+      "number": "2026-0429",
+      "supplier": { "name": "Sydkust El AB", "orgNumber": "556210-4471" },
+      "dueDate": "2026-09-02",
+      "amount": { "value": "47900.00", "currency": "SEK" },
+      "status": "sent_to_signing",
+      "statusLabel": "",
+      "href": "/api/v1/invoices/2026-0429"
+    },
+    {
+      "id": "2026-0430",
+      "number": "2026-0430",
+      "supplier": { "name": "Malmgren Städ AB", "orgNumber": "556884-2019" },
+      "dueDate": "2026-09-02",
+      "amount": { "value": "18750.00", "currency": "SEK" },
+      "status": "pending",
+      "statusLabel": "",
+      "href": "/api/v1/invoices/2026-0430"
+    },
+    {
+      "id": "2026-0431",
+      "number": "2026-0431",
+      "supplier": { "name": "Nordvik Bygg & Ventilation AB", "orgNumber": "556734-1092" },
+      "dueDate": "2026-09-04",
+      "amount": { "value": "184250.00", "currency": "SEK" },
+      "status": "hold",
+      "statusLabel": "Hold",
+      "href": "/api/v1/invoices/2026-0431"
+    },
+    {
+      "id": "2026-0432",
+      "number": "2026-0432",
+      "supplier": { "name": "Kranvik Hiss AB", "orgNumber": "556417-9930" },
+      "dueDate": "2026-09-05",
+      "amount": { "value": "29300.00", "currency": "SEK" },
+      "status": "pending",
+      "statusLabel": "",
+      "href": "/api/v1/invoices/2026-0432"
+    },
+    {
+      "id": "2026-0433",
+      "number": "2026-0433",
+      "supplier": { "name": "Almén Kontorsservice AB", "orgNumber": "556652-3318" },
+      "dueDate": "2026-09-05",
+      "amount": { "value": "9640.00", "currency": "SEK" },
+      "status": "pending",
+      "statusLabel": "",
+      "href": "/api/v1/invoices/2026-0433"
+    },
+    {
+      "id": "2026-0434",
+      "number": "2026-0434",
+      "supplier": { "name": "Rydell Måleri AB", "orgNumber": "556129-8804" },
+      "dueDate": "2026-09-08",
+      "amount": { "value": "76100.00", "currency": "SEK" },
+      "status": "pending",
+      "statusLabel": "",
+      "href": "/api/v1/invoices/2026-0434"
+    },
+    {
+      "id": "2026-0435",
+      "number": "2026-0435",
+      "supplier": { "name": "Sundberg VVS AB", "orgNumber": "556970-1256" },
+      "dueDate": "2026-09-09",
+      "amount": { "value": "41820.00", "currency": "SEK" },
+      "status": "pending",
+      "statusLabel": "",
+      "href": "/api/v1/invoices/2026-0435"
+    },
+    {
+      "id": "2026-0436",
+      "number": "2026-0436",
+      "supplier": { "name": "Lidbom Glas AB", "orgNumber": "556503-6647" },
+      "dueDate": "2026-09-11",
+      "amount": { "value": "13475.00", "currency": "SEK" },
+      "status": "pending",
+      "statusLabel": "",
+      "href": "/api/v1/invoices/2026-0436"
+    },
+    {
+      "id": "2026-0437",
+      "number": "2026-0437",
+      "supplier": { "name": "Frösö Larmteknik AB", "orgNumber": "556788-4402" },
+      "dueDate": "2026-09-12",
+      "amount": { "value": "55900.00", "currency": "SEK" },
+      "status": "pending",
+      "statusLabel": "",
+      "href": "/api/v1/invoices/2026-0437"
+    }
+  ],
+  "meta": {
+    "totalResources": 10,
+    "counts": { "hold": 1, "awaitingVerification": 1 },
+    "tenant": { "name": "AB Almén Fastigheter" },
+    "period": "2026-08",
+    "generatedAt": "2026-08-25T09:14:00+02:00"
+  }
+}
