@@ -1,0 +1,106 @@
+{
+  "id": "2026-0424",
+  "number": "2026-0424",
+  "status": "pending",
+  "supplier": {
+    "name": "Bergslund Trä AB",
+    "orgNumber": "556301-7742",
+    "registerPhone": "+46 21 14 88 30",
+    "invoicePhone": "+46 21 14 88 30"
+  },
+  "dueDate": "2026-09-01",
+  "amount": { "value": "62400.00", "currency": "SEK" },
+  "lines": [
+    {
+      "description": "Timber delivery, Kv. Almen 4",
+      "period": "2026-07",
+      "quantity": 1,
+      "unitPrice": "38400.00",
+      "amount": "38400.00"
+    },
+    {
+      "description": "Treated decking, 120 m",
+      "period": "2026-07",
+      "quantity": 120,
+      "unitPrice": "96.00",
+      "amount": "11520.00"
+    }
+  ],
+  "vat": { "rate": "0.25", "value": "12480.00" },
+  "total": { "value": "62400.00", "currency": "SEK" },
+  "payment": null,
+  "bankDetailsCheck": {
+    "verdict": "pass",
+    "headline": null,
+    "detail": null,
+    "engine": "bank-details-check",
+    "version": "1.4",
+    "evaluatedAt": "2026-08-25T07:12:00+02:00",
+    "traceId": "822786d4-fb8e-48a1-a7c6-e8f5a07dde5f",
+    "findings": [
+      {
+        "code": "supplier_identity",
+        "title": "Supplier identity matches",
+        "detail": "Org number 556301-7742 on the invoice is the one held in the supplier register.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["ERP register"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "vop",
+        "title": "VoP (Verification of Payee)",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 418-2205.",
+        "outcome": "match",
+        "outcomeLabel": "Match",
+        "sources": ["Receiving bank"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "account_changed",
+        "title": "Account unchanged",
+        "detail": "The account on this invoice is the one this supplier has always been paid on.",
+        "outcome": "match",
+        "outcomeLabel": "Unchanged",
+        "sources": ["ERP history", "Bank transactions"],
+        "mocked": false,
+        "evidence": {
+          "registeredAccount": "418-2205",
+          "invoiceAccount": "418-2205",
+          "paymentCount": 22,
+          "lastPaidAt": "2026-08-03",
+          "firstSeenAt": "2024-09-10",
+          "rangeFrom": "2024-09",
+          "rangeTo": "2026-08"
+        }
+      },
+      {
+        "code": "account_owner",
+        "title": "Account owner matches",
+        "detail": "418-2205 resolves to Bergslund Trä AB 556301-7742.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["Account ownership"],
+        "mocked": true,
+        "evidence": {
+          "actual": {
+            "account": "418-2205",
+            "name": "Bergslund Trä AB",
+            "orgNumber": "556301-7742"
+          },
+          "expected": {
+            "name": "Bergslund Trä AB",
+            "orgNumber": "556301-7742"
+          }
+        }
+      }
+    ]
+  },
+  "actions": {
+    "logVerificationCall": { "available": false },
+    "keepOnHold": { "available": false },
+    "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }
+  }
+}

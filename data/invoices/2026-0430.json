@@ -1,0 +1,113 @@
+{
+  "id": "2026-0430",
+  "number": "2026-0430",
+  "status": "pending",
+  "supplier": {
+    "name": "Malmgren Städ AB",
+    "orgNumber": "556884-2019",
+    "registerPhone": "+46 8 641 20 15",
+    "invoicePhone": "+46 8 641 20 15"
+  },
+  "dueDate": "2026-09-02",
+  "amount": { "value": "18750.00", "currency": "SEK" },
+  "lines": [
+    {
+      "description": "Stairwell cleaning, monthly",
+      "period": "2026-07",
+      "quantity": 1,
+      "unitPrice": "9800.00",
+      "amount": "9800.00"
+    },
+    {
+      "description": "Window cleaning, entrances A–C",
+      "period": "2026-07",
+      "quantity": 3,
+      "unitPrice": "1200.00",
+      "amount": "3600.00"
+    },
+    {
+      "description": "Waste room deep clean",
+      "period": "2026-07",
+      "quantity": 1,
+      "unitPrice": "1600.00",
+      "amount": "1600.00"
+    }
+  ],
+  "vat": { "rate": "0.25", "value": "3750.00" },
+  "total": { "value": "18750.00", "currency": "SEK" },
+  "payment": null,
+  "bankDetailsCheck": {
+    "verdict": "pass",
+    "headline": null,
+    "detail": null,
+    "engine": "bank-details-check",
+    "version": "1.4",
+    "evaluatedAt": "2026-08-25T07:41:00+02:00",
+    "traceId": "65dd127b-ada2-4068-8f73-122f3228bdb3",
+    "findings": [
+      {
+        "code": "supplier_identity",
+        "title": "Supplier identity matches",
+        "detail": "Org number 556884-2019 on the invoice is the one held in the supplier register.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["ERP register"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "vop",
+        "title": "VoP (Verification of Payee)",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 730-9914.",
+        "outcome": "match",
+        "outcomeLabel": "Match",
+        "sources": ["Receiving bank"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "account_changed",
+        "title": "Account unchanged",
+        "detail": "The account on this invoice is the one this supplier has always been paid on.",
+        "outcome": "match",
+        "outcomeLabel": "Unchanged",
+        "sources": ["ERP history", "Bank transactions"],
+        "mocked": false,
+        "evidence": {
+          "registeredAccount": "730-9914",
+          "invoiceAccount": "730-9914",
+          "paymentCount": 31,
+          "lastPaidAt": "2026-08-05",
+          "firstSeenAt": "2023-12-01",
+          "rangeFrom": "2023-12",
+          "rangeTo": "2026-08"
+        }
+      },
+      {
+        "code": "account_owner",
+        "title": "Account owner matches",
+        "detail": "730-9914 resolves to Malmgren Städ AB 556884-2019.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["Account ownership"],
+        "mocked": true,
+        "evidence": {
+          "actual": {
+            "account": "730-9914",
+            "name": "Malmgren Städ AB",
+            "orgNumber": "556884-2019"
+          },
+          "expected": {
+            "name": "Malmgren Städ AB",
+            "orgNumber": "556884-2019"
+          }
+        }
+      }
+    ]
+  },
+  "actions": {
+    "logVerificationCall": { "available": false },
+    "keepOnHold": { "available": false },
+    "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }
+  }
+}

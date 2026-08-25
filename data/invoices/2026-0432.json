@@ -1,0 +1,106 @@
+{
+  "id": "2026-0432",
+  "number": "2026-0432",
+  "status": "pending",
+  "supplier": {
+    "name": "Kranvik Hiss AB",
+    "orgNumber": "556417-9930",
+    "registerPhone": "+46 8 522 71 40",
+    "invoicePhone": "+46 8 522 71 40"
+  },
+  "dueDate": "2026-09-05",
+  "amount": { "value": "29300.00", "currency": "SEK" },
+  "lines": [
+    {
+      "description": "Lift service agreement, Q3",
+      "period": "2026-07",
+      "quantity": 1,
+      "unitPrice": "18000.00",
+      "amount": "18000.00"
+    },
+    {
+      "description": "Door sensor replacement, lift B",
+      "period": "2026-07-18",
+      "quantity": 2,
+      "unitPrice": "2720.00",
+      "amount": "5440.00"
+    }
+  ],
+  "vat": { "rate": "0.25", "value": "5860.00" },
+  "total": { "value": "29300.00", "currency": "SEK" },
+  "payment": null,
+  "bankDetailsCheck": {
+    "verdict": "pass",
+    "headline": null,
+    "detail": null,
+    "engine": "bank-details-check",
+    "version": "1.4",
+    "evaluatedAt": "2026-08-25T08:03:00+02:00",
+    "traceId": "b0ecc245-04c2-4369-8bfc-d93b34923781",
+    "findings": [
+      {
+        "code": "supplier_identity",
+        "title": "Supplier identity matches",
+        "detail": "Org number 556417-9930 on the invoice is the one held in the supplier register.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["ERP register"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "vop",
+        "title": "VoP (Verification of Payee)",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 265-4471.",
+        "outcome": "match",
+        "outcomeLabel": "Match",
+        "sources": ["Receiving bank"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "account_changed",
+        "title": "Account unchanged",
+        "detail": "The account on this invoice is the one this supplier has always been paid on.",
+        "outcome": "match",
+        "outcomeLabel": "Unchanged",
+        "sources": ["ERP history", "Bank transactions"],
+        "mocked": false,
+        "evidence": {
+          "registeredAccount": "265-4471",
+          "invoiceAccount": "265-4471",
+          "paymentCount": 9,
+          "lastPaidAt": "2026-07-28",
+          "firstSeenAt": "2025-08-19",
+          "rangeFrom": "2025-08",
+          "rangeTo": "2026-07"
+        }
+      },
+      {
+        "code": "account_owner",
+        "title": "Account owner matches",
+        "detail": "265-4471 resolves to Kranvik Hiss AB 556417-9930.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["Account ownership"],
+        "mocked": true,
+        "evidence": {
+          "actual": {
+            "account": "265-4471",
+            "name": "Kranvik Hiss AB",
+            "orgNumber": "556417-9930"
+          },
+          "expected": {
+            "name": "Kranvik Hiss AB",
+            "orgNumber": "556417-9930"
+          }
+        }
+      }
+    ]
+  },
+  "actions": {
+    "logVerificationCall": { "available": false },
+    "keepOnHold": { "available": false },
+    "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }
+  }
+}
