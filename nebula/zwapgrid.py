@@ -77,6 +77,27 @@ class ZwapgridClient:
             f"{self._settings.accounting_base_url}/api/v1/consents/{consent_id}/companyinformation"
         )
 
+    def get_supplier_invoices(self, consent_id: str) -> dict[str, Any]:
+        """Fetch ERP company information for an accepted consent."""
+        return self._get(
+            f"{self._settings.accounting_base_url}/api/v1/consents/{consent_id}/supplierinvoices"
+        )
+
+    def create_supplier_invoice(
+        self, consent_id: str, invoice: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Create a supplier invoice for an accepted consent.
+
+        See https://docs.zwapgrid.com/api-guide/accounting-api-guide/supplier-invoices
+        for the expected request body shape.
+        """
+        response = self._send(
+            "POST",
+            f"{self._settings.accounting_base_url}/api/v1/consents/{consent_id}/supplierinvoices",
+            json=invoice,
+        )
+        return response.json()
+
     def create_consent(
         self, name: str, systems_settings: dict[str, str] | None = None
     ) -> str:
