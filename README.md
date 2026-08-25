@@ -72,6 +72,49 @@ Print the raw JSON responses instead of a summary:
 python -m nebula --json
 ```
 
+## Invoices API
+
+A small FastAPI app (`nebula/api.py`) exposes two mocked invoice endpoints — `get_invoices` and
+`pay_invoice`. It's standalone and doesn't need `.env` or real credentials; the data is an
+in-memory seeded list that resets whenever the process restarts.
+
+### Running with Docker Compose
+
+```bash
+make up      # docker compose up --build -d
+```
+
+The API listens on `http://localhost:8000` (published on `127.0.0.1` only, so it isn't reachable
+from other machines). Other commands:
+
+```bash
+make logs    # tail the api container logs
+make down    # stop and remove the container
+```
+
+### Running without Docker
+
+```bash
+uvicorn nebula.api:app --reload --port 8000
+```
+
+### Endpoints
+
+| Method | Path                          | Description                                                        |
+| ------ | ----------------------------- | ------------------------------------------------------------------ |
+| GET    | `/invoices`                   | List all mocked invoices.                                          |
+| POST   | `/invoices/{invoice_id}/pay`  | Mark an invoice as paid. Returns `404` if unknown, `409` if already paid. |
+| GET    | `/health`                     | Basic liveness check.                                              |
+
+```bash
+curl http://localhost:8000/invoices
+curl -X POST http://localhost:8000/invoices/inv-001/pay
+```
+
+Interactive docs (Swagger UI) are served at `http://localhost:8000/docs`, and the OpenAPI schema
+at `http://localhost:8000/openapi.json`. To try it in Postman without hand-building requests, use
+*Import → Link* with the OpenAPI URL to generate a ready-made collection.
+
 ## Getting a Zwapgrid consent
 
 A consent ID is created by you through the API, but it only becomes usable for reading data after
@@ -175,8 +218,12 @@ nebula/
   open_payments.py   OAuth2 client credentials + Open Payments REST calls
   zwapgrid.py        API key auth + Zwapgrid Consent and Accounting API calls
   cli.py             Command line interface
+  api.py             FastAPI app with mocked get_invoices / pay_invoice endpoints
 .env.template        Documented environment variables (committed)
 .env                 Your local credentials (git-ignored)
+Dockerfile           Container image for the invoices API
+docker-compose.yml   Runs the invoices API via Docker Compose
+Makefile             Shortcuts for docker compose (make up / logs / down)
 ```
 
 ## Next steps
