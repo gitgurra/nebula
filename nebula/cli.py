@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from typing import Any, Callable
 
@@ -40,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
             "create-consent",
             "zwapgrid_create_invoices",
             "zwapgrid_invoices",
+            "zwapgrid_suppliers",
         ],
         help="Which sandbox to call. Defaults to 'hello', which calls both.",
     )
@@ -96,6 +98,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         ],
         "zwapgrid_invoices": [zwapgrid_invoices],
+        "zwapgrid_suppliers": [zwapgrid_suppliers],
     }
 
     results = [runner(args.json) for runner in runners[args.command]]
@@ -206,6 +209,43 @@ def zwapgrid_invoices(as_json: bool) -> bool:
     return True
 
 
+def zwapgrid_suppliers(as_json: bool) -> bool:
+    """Print every supplier in full, including the accounts each expects to be paid into."""
+    _header("Zwapgrid: suppliers")
+    try:
+        settings = load_zwapgrid_settings()
+        with ZwapgridClient(settings, timeout=request_timeout_seconds()) as client:
+            accepted = client.find_accepted_consent()
+            if accepted is None:
+                print(
+                    "No accepted Fortnox consent yet, so there are no suppliers to read. "
+                    "Run 'python -m nebula create-consent' and complete the Onboarding Flow."
+                )
+                return True
+
+            print(f"Using accepted consent {accepted['id']} (source={accepted.get('source')}).")
+            suppliers = client.get_suppliers(accepted["id"])
+            print(f"\nSuppliers: {len(suppliers)}")
+            _dump(suppliers)
+    except (ConfigError, ZwapgridError) as error:
+        return _fail(error)
+    return True
+
+
+def _next_invoice_number(client: ZwapgridClient, consent_id: str, prefix: str = "INV-") -> int:
+    """Continue the INV-NNN series, since invoices cannot be deleted once created."""
+    existing = client.get_all(consent_id, "supplierinvoices")
+    used = [
+        int(match.group(1))
+        for match in (
+            re.fullmatch(rf"{re.escape(prefix)}(\d+)", str(invoice.get("reference") or ""))
+            for invoice in existing
+        )
+        if match
+    ]
+    return max(used, default=0) + 1
+
+
 def zwapgrid_create_invoices(
     as_json: bool,
     count: int = 1,
@@ -244,10 +284,11 @@ def zwapgrid_create_invoices(
 
             print(f"\nUsing accepted consent {accepted['id']} (source={accepted.get('source')}).")
 
-            print(f"Creating {count} supplier invoice(s)")
+            start = _next_invoice_number(client, accepted["id"])
+            print(f"Creating {count} supplier invoice(s) from INV-{start:03d}")
 
             for i in range(count):
-                invoice_number = f"INV-{i + 1:03d}"
+                invoice_number = f"INV-{start + i:03d}"
                 supplier_invoice = client.create_supplier_invoice(
                     consent_id=accepted["id"],
                     invoice=supplier_invoice_payload(

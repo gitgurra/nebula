@@ -90,31 +90,31 @@ class ZwapgridClient:
         self, consent_id: str, count: int = 100, current_page: int = 1
     ) -> dict[str, Any]:
         """Fetch one page of invoices the customer has received (accounts payable)."""
-        return self._get_invoices(consent_id, "supplierinvoices", count, current_page)
+        return self._get_page(consent_id, "supplierinvoices", count, current_page)
 
     def get_sales_invoices(
         self, consent_id: str, count: int = 100, current_page: int = 1
     ) -> dict[str, Any]:
         """Fetch one page of invoices the customer has issued (accounts receivable)."""
-        return self._get_invoices(consent_id, "salesinvoices", count, current_page)
+        return self._get_page(consent_id, "salesinvoices", count, current_page)
 
-    def get_all_invoices(
+    def get_all(
         self, consent_id: str, resource: str, page_size: int = 100
     ) -> list[dict[str, Any]]:
-        """Page through every invoice of one kind, where resource is sales or supplier invoices.
+        """Page through every record of a resource, such as supplierinvoices or suppliers.
 
-        Paging stops at the page count reported in the first response: asking for a page past
-        the end is a 400, not an empty list.
+        Paging stops at the page count reported in the response: asking for a page past the
+        end is a 400, not an empty list.
         """
-        invoices: list[dict[str, Any]] = []
+        records: list[dict[str, Any]] = []
         page = 1
         while True:
-            batch = self._get_invoices(consent_id, resource, page_size, page)
+            batch = self._get_page(consent_id, resource, page_size, page)
             rows = batch.get("data") or []
-            invoices.extend(rows)
+            records.extend(rows)
             total_pages = (batch.get("meta") or {}).get("totalPages") or 1
             if not rows or page >= total_pages:
-                return invoices
+                return records
             page += 1
 
     def get_invoice(self, consent_id: str, resource: str, invoice_id: str) -> dict[str, Any]:
@@ -138,11 +138,20 @@ class ZwapgridClient:
         """
         return [
             self.get_invoice(consent_id, resource, invoice["id"])
-            for invoice in self.get_all_invoices(consent_id, resource, page_size)
+            for invoice in self.get_all(consent_id, resource, page_size)
             if invoice.get("id")
         ]
 
-    def _get_invoices(
+    def get_suppliers(self, consent_id: str) -> list[dict[str, Any]]:
+        """Fetch every supplier, including the accounts each one expects to be paid into.
+
+        Fortnox keeps payee bank details on the supplier rather than on the invoice, under
+        `paymentMeans[].financialAccount`. Only the list endpoint works: fetching a single
+        supplier by ID returns 501.
+        """
+        return self.get_all(consent_id, "suppliers")
+
+    def _get_page(
         self, consent_id: str, resource: str, count: int, current_page: int
     ) -> dict[str, Any]:
         return self._get(
@@ -228,8 +237,9 @@ def supplier_invoice_payload(
     currency: str = "SEK",
     issue_date: date | None = None,
     due_date: date | None = None,
-    payment_id: str = "12345678",
-    payment_scheme_id: str = "987654321",
+    payment_account: str = "5555-6666",
+    payment_scheme_id: str = "SE:BG",
+    payment_channel_code: str = "BANK_TRANSFER",
     line_description: str = "Consulting services",
     account_id: str = "6550",
 ) -> dict[str, Any]:
@@ -239,9 +249,12 @@ def supplier_invoice_payload(
     own rules on top: Fortnox rejects an invoice with no lines, no supplier account ID or
     no issue date. Each line also needs either an accounting account or a seller item ID,
     and both must already exist in the connected system: an item ID has to match an article
-    in the register, so a cost account is used here instead. `paymentIds[].id` carries the
-    account the supplier expects to be paid into, which is the value a fraud check compares
-    against the bank's `creditorAccount`.
+    in the register, so a cost account is used here instead.
+
+    `paymentIds[].id` carries the account the supplier expects to be paid into, and is the
+    value a fraud check compares against the bank's `creditorAccount`. `schemeId` names the
+    numbering scheme that value belongs to, such as SE:BG for a bankgiro. The write model has
+    no `financialAccount`, so these identifiers are the only place to put the payee account.
     """
     issued = issue_date or date.today()
     due = due_date or issued + timedelta(days=30)
@@ -256,7 +269,11 @@ def supplier_invoice_payload(
             "party": {"partyName": {"name": supplier_name}},
         },
         "paymentMeans": [
-            {"paymentIds": [{"id": payment_id, "schemeId": payment_scheme_id}]}
+            {
+                "paymentChannelCode": payment_channel_code,
+                "paymentDueDate": due.isoformat(),
+                "paymentIds": [{"id": payment_account, "schemeId": payment_scheme_id}],
+            }
         ],
         "invoiceLines": [
             {
