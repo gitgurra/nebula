@@ -1,0 +1,111 @@
+{
+  "id": "2026-0429",
+  "number": "2026-0429",
+  "status": "sent_to_signing",
+  "supplier": {
+    "name": "Sydkust El AB",
+    "orgNumber": "556210-4471",
+    "registerPhone": "+46 40 118 90 20",
+    "invoicePhone": "+46 40 118 90 20"
+  },
+  "dueDate": "2026-09-02",
+  "amount": { "value": "47900.00", "currency": "SEK" },
+  "lines": [
+    {
+      "description": "Electrical maintenance, Kv. Almen 4",
+      "period": "2026-07",
+      "quantity": 1,
+      "unitPrice": "32000.00",
+      "amount": "32000.00"
+    },
+    {
+      "description": "Emergency lighting inspection",
+      "period": "2026-07",
+      "quantity": 1,
+      "unitPrice": "6320.00",
+      "amount": "6320.00"
+    }
+  ],
+  "vat": { "rate": "0.25", "value": "9580.00" },
+  "total": { "value": "47900.00", "currency": "SEK" },
+  "payment": {
+    "statusLabel": "Sent to signing",
+    "paymentDate": "2026-09-02",
+    "account": "552-8890",
+    "approver": "M. Lindqvist"
+  },
+  "bankDetailsCheck": {
+    "verdict": "pass",
+    "headline": null,
+    "detail": null,
+    "engine": "bank-details-check",
+    "version": "1.4",
+    "evaluatedAt": "2026-08-25T08:51:00+02:00",
+    "traceId": "2c9f70b1-4ad8-41e6-9f02-71bb54ce8a3d",
+    "findings": [
+      {
+        "code": "supplier_identity",
+        "title": "Supplier identity matches",
+        "detail": "Org number 556210-4471 on the invoice is the one held in the supplier register.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["ERP register"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "vop",
+        "title": "VoP (Verification of Payee)",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 552-8890.",
+        "outcome": "match",
+        "outcomeLabel": "Match",
+        "sources": ["Receiving bank"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "account_changed",
+        "title": "Account unchanged",
+        "detail": "The account on this invoice is the one this supplier has always been paid on.",
+        "outcome": "match",
+        "outcomeLabel": "Unchanged",
+        "sources": ["ERP history", "Bank transactions"],
+        "mocked": false,
+        "evidence": {
+          "registeredAccount": "552-8890",
+          "invoiceAccount": "552-8890",
+          "paymentCount": 14,
+          "lastPaidAt": "2026-08-01",
+          "firstSeenAt": "2025-06-12",
+          "rangeFrom": "2025-06",
+          "rangeTo": "2026-08"
+        }
+      },
+      {
+        "code": "account_owner",
+        "title": "Account owner matches",
+        "detail": "552-8890 resolves to Sydkust El AB 556210-4471.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["Account ownership"],
+        "mocked": true,
+        "evidence": {
+          "actual": {
+            "account": "552-8890",
+            "name": "Sydkust El AB",
+            "orgNumber": "556210-4471"
+          },
+          "expected": {
+            "name": "Sydkust El AB",
+            "orgNumber": "556210-4471"
+          }
+        }
+      }
+    ]
+  },
+  "actions": {
+    "logVerificationCall": { "available": false },
+    "keepOnHold": { "available": false },
+    "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }
+  }
+}
