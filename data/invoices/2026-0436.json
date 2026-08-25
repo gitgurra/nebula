@@ -1,0 +1,106 @@
+{
+  "id": "2026-0436",
+  "number": "2026-0436",
+  "status": "pending",
+  "supplier": {
+    "name": "Lidbom Glas AB",
+    "orgNumber": "556503-6647",
+    "registerPhone": "+46 8 445 19 62",
+    "invoicePhone": "+46 8 445 19 62"
+  },
+  "dueDate": "2026-09-11",
+  "amount": { "value": "13475.00", "currency": "SEK" },
+  "lines": [
+    {
+      "description": "Window pane replacement, unit 12B",
+      "period": "2026-07",
+      "quantity": 1,
+      "unitPrice": "6980.00",
+      "amount": "6980.00"
+    },
+    {
+      "description": "Sealing strip, 40 m",
+      "period": "2026-07",
+      "quantity": 40,
+      "unitPrice": "95.00",
+      "amount": "3800.00"
+    }
+  ],
+  "vat": { "rate": "0.25", "value": "2695.00" },
+  "total": { "value": "13475.00", "currency": "SEK" },
+  "payment": null,
+  "bankDetailsCheck": {
+    "verdict": "pass",
+    "headline": null,
+    "detail": null,
+    "engine": "bank-details-check",
+    "version": "1.4",
+    "evaluatedAt": "2026-08-25T09:02:00+02:00",
+    "traceId": "1693d020-35b2-4197-9a43-e3ca541b7ccb",
+    "findings": [
+      {
+        "code": "supplier_identity",
+        "title": "Supplier identity matches",
+        "detail": "Org number 556503-6647 on the invoice is the one held in the supplier register.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["ERP register"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "vop",
+        "title": "VoP (Verification of Payee)",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 357-2049.",
+        "outcome": "match",
+        "outcomeLabel": "Match",
+        "sources": ["Receiving bank"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "account_changed",
+        "title": "Account unchanged",
+        "detail": "The account on this invoice is the one this supplier has always been paid on.",
+        "outcome": "match",
+        "outcomeLabel": "Unchanged",
+        "sources": ["ERP history", "Bank transactions"],
+        "mocked": false,
+        "evidence": {
+          "registeredAccount": "357-2049",
+          "invoiceAccount": "357-2049",
+          "paymentCount": 11,
+          "lastPaidAt": "2026-07-21",
+          "firstSeenAt": "2025-06-25",
+          "rangeFrom": "2025-06",
+          "rangeTo": "2026-07"
+        }
+      },
+      {
+        "code": "account_owner",
+        "title": "Account owner matches",
+        "detail": "357-2049 resolves to Lidbom Glas AB 556503-6647.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["Account ownership"],
+        "mocked": true,
+        "evidence": {
+          "actual": {
+            "account": "357-2049",
+            "name": "Lidbom Glas AB",
+            "orgNumber": "556503-6647"
+          },
+          "expected": {
+            "name": "Lidbom Glas AB",
+            "orgNumber": "556503-6647"
+          }
+        }
+      }
+    ]
+  },
+  "actions": {
+    "logVerificationCall": { "available": false },
+    "keepOnHold": { "available": false },
+    "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }
+  }
+}

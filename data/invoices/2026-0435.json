@@ -1,0 +1,106 @@
+{
+  "id": "2026-0435",
+  "number": "2026-0435",
+  "status": "pending",
+  "supplier": {
+    "name": "Sundberg VVS AB",
+    "orgNumber": "556970-1256",
+    "registerPhone": "+46 8 618 33 07",
+    "invoicePhone": "+46 8 618 33 07"
+  },
+  "dueDate": "2026-09-09",
+  "amount": { "value": "41820.00", "currency": "SEK" },
+  "lines": [
+    {
+      "description": "Radiator flush, 24 units",
+      "period": "2026-07",
+      "quantity": 24,
+      "unitPrice": "1154.00",
+      "amount": "27696.00"
+    },
+    {
+      "description": "Valve replacement, riser 3",
+      "period": "2026-07-14",
+      "quantity": 1,
+      "unitPrice": "5760.00",
+      "amount": "5760.00"
+    }
+  ],
+  "vat": { "rate": "0.25", "value": "8364.00" },
+  "total": { "value": "41820.00", "currency": "SEK" },
+  "payment": null,
+  "bankDetailsCheck": {
+    "verdict": "pass",
+    "headline": null,
+    "detail": null,
+    "engine": "bank-details-check",
+    "version": "1.4",
+    "evaluatedAt": "2026-08-25T08:38:00+02:00",
+    "traceId": "633a3bed-bbbf-4c2a-add8-5945fe733f95",
+    "findings": [
+      {
+        "code": "supplier_identity",
+        "title": "Supplier identity matches",
+        "detail": "Org number 556970-1256 on the invoice is the one held in the supplier register.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["ERP register"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "vop",
+        "title": "VoP (Verification of Payee)",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 603-5182.",
+        "outcome": "match",
+        "outcomeLabel": "Match",
+        "sources": ["Receiving bank"],
+        "mocked": false,
+        "evidence": null
+      },
+      {
+        "code": "account_changed",
+        "title": "Account unchanged",
+        "detail": "The account on this invoice is the one this supplier has always been paid on.",
+        "outcome": "match",
+        "outcomeLabel": "Unchanged",
+        "sources": ["ERP history", "Bank transactions"],
+        "mocked": false,
+        "evidence": {
+          "registeredAccount": "603-5182",
+          "invoiceAccount": "603-5182",
+          "paymentCount": 18,
+          "lastPaidAt": "2026-08-02",
+          "firstSeenAt": "2024-12-09",
+          "rangeFrom": "2024-12",
+          "rangeTo": "2026-08"
+        }
+      },
+      {
+        "code": "account_owner",
+        "title": "Account owner matches",
+        "detail": "603-5182 resolves to Sundberg VVS AB 556970-1256.",
+        "outcome": "match",
+        "outcomeLabel": "Matches",
+        "sources": ["Account ownership"],
+        "mocked": true,
+        "evidence": {
+          "actual": {
+            "account": "603-5182",
+            "name": "Sundberg VVS AB",
+            "orgNumber": "556970-1256"
+          },
+          "expected": {
+            "name": "Sundberg VVS AB",
+            "orgNumber": "556970-1256"
+          }
+        }
+      }
+    ]
+  },
+  "actions": {
+    "logVerificationCall": { "available": false },
+    "keepOnHold": { "available": false },
+    "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }
+  }
+}
