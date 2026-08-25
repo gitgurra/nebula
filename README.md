@@ -72,12 +72,16 @@ Print the raw JSON responses instead of a summary:
 python -m nebula --json
 ```
 
-## Getting a Zwapgrid consent ID in sandbox
+## Getting a Zwapgrid consent
 
 A consent ID is created by you through the API, but it only becomes usable for reading data after
-someone accepts it in the Onboarding Flow. There is no way to skip the browser step. In the
-Development environment you can accept it yourself against **Test.1**, Zwapgrid's dummy accounting
-system, which returns canned data.
+someone accepts it in the Onboarding Flow. There is no way to skip the browser step. Log in to
+Fortnox in the same browser first, otherwise the flow falls back to Fortnox's signup and asks you
+to pay.
+
+This project targets **Fortnox** only. Commands select the most recently accepted consent whose
+source is Fortnox, so a consent for any other accounting system is ignored rather than picked up
+by accident.
 
 ```bash
 python -m nebula create-consent
@@ -86,10 +90,10 @@ python -m nebula create-consent
 This creates the consent, generates a one-time code, and prints an Onboarding Flow URL:
 
 ```
-Consent created: 8a179e27-a14d-4ea0-ad71-bab15769dbdf
+Consent created: 541be958-c504-4bd5-ad2d-840761e039db
 
 Open this URL in a browser to connect an accounting system:
-  https://onboarding.zwapgrid.com/consent/8a179e27-.../testone/?otc=Vadsofpg%2FwXGWE...
+  https://onboarding.zwapgrid.com/consent/541be958-.../fortnox/?otc=Vadsofpg%2FwXGWE...
 
 Once accepted, run 'python -m nebula zwapgrid' - the accepted consent is
 picked up automatically, so there is nothing to copy into .env.

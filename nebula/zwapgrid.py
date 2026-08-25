@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date, timedelta
 from enum import IntEnum
 from types import TracebackType
 from typing import Any
@@ -11,6 +12,9 @@ from urllib.parse import urlencode
 import httpx
 
 from .config import ZwapgridSettings
+
+
+ACCOUNTING_SYSTEM = "Fortnox"
 
 
 class ConsentStatus(IntEnum):
@@ -56,13 +60,18 @@ class ZwapgridClient:
             f"{self._settings.consents_base_url}/api/v1/consents", params=params
         )
 
-    def find_accepted_consent(self) -> dict[str, Any] | None:
-        """Return the most recently created accepted consent, or None if there is none."""
+    def find_accepted_consent(self, source: str = ACCOUNTING_SYSTEM) -> dict[str, Any] | None:
+        """Return the most recently accepted consent for `source`, or None if there is none.
+
+        The source filter is what keeps a consent for some other accounting system from being
+        picked up silently just because it happens to be the most recently accepted one.
+        """
         page = self.list_consents(count=100, status="ACCEPTED")
         accepted = [
             consent
             for consent in page.get("data") or []
             if consent.get("status") == ConsentStatus.ACCEPTED
+            and (consent.get("source") or "").casefold() == source.casefold()
         ]
         if not accepted:
             return None
@@ -77,18 +86,76 @@ class ZwapgridClient:
             f"{self._settings.accounting_base_url}/api/v1/consents/{consent_id}/companyinformation"
         )
 
-    def get_supplier_invoices(self, consent_id: str) -> dict[str, Any]:
-        """Fetch ERP company information for an accepted consent."""
+    def get_supplier_invoices(
+        self, consent_id: str, count: int = 100, current_page: int = 1
+    ) -> dict[str, Any]:
+        """Fetch one page of invoices the customer has received (accounts payable)."""
+        return self._get_invoices(consent_id, "supplierinvoices", count, current_page)
+
+    def get_sales_invoices(
+        self, consent_id: str, count: int = 100, current_page: int = 1
+    ) -> dict[str, Any]:
+        """Fetch one page of invoices the customer has issued (accounts receivable)."""
+        return self._get_invoices(consent_id, "salesinvoices", count, current_page)
+
+    def get_all_invoices(
+        self, consent_id: str, resource: str, page_size: int = 100
+    ) -> list[dict[str, Any]]:
+        """Page through every invoice of one kind, where resource is sales or supplier invoices.
+
+        Paging stops at the page count reported in the first response: asking for a page past
+        the end is a 400, not an empty list.
+        """
+        invoices: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            batch = self._get_invoices(consent_id, resource, page_size, page)
+            rows = batch.get("data") or []
+            invoices.extend(rows)
+            total_pages = (batch.get("meta") or {}).get("totalPages") or 1
+            if not rows or page >= total_pages:
+                return invoices
+            page += 1
+
+    def get_invoice(self, consent_id: str, resource: str, invoice_id: str) -> dict[str, Any]:
+        """Fetch one invoice with every field the system holds.
+
+        The list endpoints return a 10-field summary; this returns 28, and `invoiceLines`
+        and `paymentMeans` appear only here.
+        """
         return self._get(
-            f"{self._settings.accounting_base_url}/api/v1/consents/{consent_id}/supplierinvoices"
+            f"{self._settings.accounting_base_url}"
+            f"/api/v1/consents/{consent_id}/{resource}/{invoice_id}"
         )
 
-    def create_supplier_invoice(
-        self, consent_id: str, invoice: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Create a supplier invoice for an accepted consent.
+    def get_all_invoices_in_full(
+        self, consent_id: str, resource: str, page_size: int = 100
+    ) -> list[dict[str, Any]]:
+        """Fetch every invoice of one kind in full.
 
-        See https://docs.zwapgrid.com/api-guide/accounting-api-guide/supplier-invoices
+        This costs one request per invoice on top of the paging, because the API offers no
+        way to ask a list endpoint for the complete records.
+        """
+        return [
+            self.get_invoice(consent_id, resource, invoice["id"])
+            for invoice in self.get_all_invoices(consent_id, resource, page_size)
+            if invoice.get("id")
+        ]
+
+    def _get_invoices(
+        self, consent_id: str, resource: str, count: int, current_page: int
+    ) -> dict[str, Any]:
+        return self._get(
+            f"{self._settings.accounting_base_url}/api/v1/consents/{consent_id}/{resource}",
+            params={"Count": count, "CurrentPage": current_page},
+        )
+
+    def create_supplier_invoice(self, consent_id: str, invoice: dict[str, Any]) -> str | None:
+        """Create a supplier invoice for an accepted consent, returning the new invoice ID.
+
+        A successful create responds 201 with an empty body, so the ID is only available
+        from the Location header. See
+        https://docs.zwapgrid.com/api-guide/accounting-api-guide/supplier-invoices
         for the expected request body shape.
         """
         response = self._send(
@@ -96,7 +163,8 @@ class ZwapgridClient:
             f"{self._settings.accounting_base_url}/api/v1/consents/{consent_id}/supplierinvoices",
             json=invoice,
         )
-        return response.json()
+        location = response.headers.get("Location", "")
+        return location.rstrip("/").rsplit("/", 1)[-1] or None
 
     def create_consent(
         self, name: str, systems_settings: dict[str, str] | None = None
@@ -150,6 +218,59 @@ class ZwapgridClient:
                 f"Zwapgrid returned {response.status_code} for {url}: {response.text.strip()}"
             )
         return response
+
+
+def supplier_invoice_payload(
+    reference: str,
+    supplier_id: str = "supplier-123",
+    supplier_name: str = "Nebula Test Supplier AB",
+    amount: float = 1000.0,
+    currency: str = "SEK",
+    issue_date: date | None = None,
+    due_date: date | None = None,
+    payment_id: str = "12345678",
+    payment_scheme_id: str = "987654321",
+    line_description: str = "Consulting services",
+    account_id: str = "6550",
+) -> dict[str, Any]:
+    """Build a supplier invoice body for POST /supplierinvoices.
+
+    The schema marks every field nullable, but the connected accounting system applies its
+    own rules on top: Fortnox rejects an invoice with no lines, no supplier account ID or
+    no issue date. Each line also needs either an accounting account or a seller item ID,
+    and both must already exist in the connected system: an item ID has to match an article
+    in the register, so a cost account is used here instead. `paymentIds[].id` carries the
+    account the supplier expects to be paid into, which is the value a fraud check compares
+    against the bank's `creditorAccount`.
+    """
+    issued = issue_date or date.today()
+    due = due_date or issued + timedelta(days=30)
+    total = {"amount": amount, "currencyId": currency}
+    return {
+        "reference": reference,
+        "issueDate": issued.isoformat(),
+        "dueDate": due.isoformat(),
+        "documentCurrencyCode": {"currencyId": currency},
+        "accountingSupplierParty": {
+            "customerAssignedAccountId": {"id": supplier_id},
+            "party": {"partyName": {"name": supplier_name}},
+        },
+        "paymentMeans": [
+            {"paymentIds": [{"id": payment_id, "schemeId": payment_scheme_id}]}
+        ],
+        "invoiceLines": [
+            {
+                "id": "1",
+                "invoicedQuantity": {"quantity": 1},
+                "lineExtensionAmount": total,
+                "account": {"id": account_id, "accountingAccountId": account_id},
+                "item": {"name": line_description},
+                "price": {"priceAmount": total},
+            }
+        ],
+        "totalBalanceAmount": total,
+        "legalMonetaryTotal": {"payableAmount": total, "taxInclusiveAmount": total},
+    }
 
 
 def onboarding_url(

@@ -15,7 +15,13 @@ from .config import (
     request_timeout_seconds,
 )
 from .open_payments import OpenPaymentsClient, OpenPaymentsError
-from .zwapgrid import ConsentStatus, ZwapgridClient, ZwapgridError, onboarding_url
+from .zwapgrid import (
+    ConsentStatus,
+    ZwapgridClient,
+    ZwapgridError,
+    onboarding_url,
+    supplier_invoice_payload,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -33,6 +39,7 @@ def main(argv: list[str] | None = None) -> int:
             "zwapgrid",
             "create-consent",
             "zwapgrid_create_invoices",
+            "zwapgrid_invoices",
         ],
         help="Which sandbox to call. Defaults to 'hello', which calls both.",
     )
@@ -44,10 +51,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--system",
-        default="testone",
+        default="fortnox",
         help=(
-            "Accounting system to deep link to in the Onboarding Flow, e.g. testone (the Test.1 "
-            "dummy system) or fortnox. Use 'any' to let the customer choose."
+            "Accounting system to deep link to in the Onboarding Flow. Use 'any' to let the "
+            "customer choose."
         ),
     )
     parser.add_argument(
@@ -55,6 +62,22 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=1,
         help="Number of invoices to create when running 'zwapgrid_create_invoices'.",
+    )
+    parser.add_argument(
+        "--supplier-id",
+        default="supplier-123",
+        help=(
+            "Supplier number to invoice from. The supplier must already exist in the connected "
+            "accounting system; Fortnox rejects unknown suppliers."
+        ),
+    )
+    parser.add_argument(
+        "--account",
+        default="6550",
+        help=(
+            "Cost account to book the invoice line to. Must exist in the chart of accounts "
+            "(6550 is Konsultarvoden in the Swedish BAS chart)."
+        ),
     )
     args = parser.parse_args(argv)
 
@@ -68,8 +91,11 @@ def main(argv: list[str] | None = None) -> int:
         "open-payments": [run_open_payments],
         "zwapgrid": [run_zwapgrid],
         "zwapgrid_create_invoices": [
-            lambda as_json: zwapgrid_create_invoices(as_json, args.count)
+            lambda as_json: zwapgrid_create_invoices(
+                as_json, args.count, args.supplier_id, args.account
+            )
         ],
+        "zwapgrid_invoices": [zwapgrid_invoices],
     }
 
     results = [runner(args.json) for runner in runners[args.command]]
@@ -126,7 +152,7 @@ def run_zwapgrid(as_json: bool) -> bool:
             accepted = client.find_accepted_consent()
             if accepted is None:
                 print(
-                    "\nNo accepted consent yet, so there is no ERP data to read. "
+                    "\nNo accepted Fortnox consent yet, so there is no ERP data to read. "
                     "Run 'python -m nebula create-consent' and complete the Onboarding Flow."
                 )
                 return True
@@ -147,7 +173,45 @@ def run_zwapgrid(as_json: bool) -> bool:
         return _fail(error)
     return True
 
-def zwapgrid_create_invoices(as_json: bool, count: int = 1) -> bool:
+def zwapgrid_invoices(as_json: bool) -> bool:
+    """Print every sales and supplier invoice on the accepted consent, in full."""
+    _header("Zwapgrid: all invoices")
+    try:
+        settings = load_zwapgrid_settings()
+        with ZwapgridClient(settings, timeout=request_timeout_seconds()) as client:
+            accepted = client.find_accepted_consent()
+            if accepted is None:
+                print(
+                    "No accepted Fortnox consent yet, so there are no invoices to read. "
+                    "Run 'python -m nebula create-consent' and complete the Onboarding Flow."
+                )
+                return True
+
+            print(f"Using accepted consent {accepted['id']} (source={accepted.get('source')}).")
+
+            for title, resource in (
+                ("Sales invoices", "salesinvoices"),
+                ("Supplier invoices", "supplierinvoices"),
+            ):
+                try:
+                    invoices = client.get_all_invoices_in_full(accepted["id"], resource)
+                except ZwapgridError as error:
+                    print(f"\n{title}: unavailable ({error})")
+                    continue
+
+                print(f"\n{title}: {len(invoices)}")
+                _dump(invoices)
+    except (ConfigError, ZwapgridError) as error:
+        return _fail(error)
+    return True
+
+
+def zwapgrid_create_invoices(
+    as_json: bool,
+    count: int = 1,
+    supplier_id: str = "supplier-123",
+    account_id: str = "6550",
+) -> bool:
     """List consents and create `count` supplier invoices on the accepted one, if there is one."""
     _header("Zwapgrid")
     try:
@@ -173,7 +237,7 @@ def zwapgrid_create_invoices(as_json: bool, count: int = 1) -> bool:
             accepted = client.find_accepted_consent()
             if accepted is None:
                 print(
-                    "\nNo accepted consent yet, so there is no ERP data to read. "
+                    "\nNo accepted Fortnox consent yet, so there is no ERP data to read. "
                     "Run 'python -m nebula create-consent' and complete the Onboarding Flow."
                 )
                 return True
@@ -186,24 +250,11 @@ def zwapgrid_create_invoices(as_json: bool, count: int = 1) -> bool:
                 invoice_number = f"INV-{i + 1:03d}"
                 supplier_invoice = client.create_supplier_invoice(
                     consent_id=accepted["id"],
-                    invoice={
-                        "invoiceNumber": invoice_number,
-                        "supplierId": "supplier-123",
-                        "invoiceDate": "2026-08-25",
-                        "dueDate": "2026-09-30",
-                        "currency": "SEK",
-                        "totalAmount": 1000.0,
-                        "paymentMeans": [
-                            {
-                            "paymentIds": [
-                                {
-                                    "id": "12345678",
-                                    "schemeId": "987654321"
-                                }
-                            ]
-                            }
-                        ]
-                    },
+                    invoice=supplier_invoice_payload(
+                        reference=invoice_number,
+                        supplier_id=supplier_id,
+                        account_id=account_id,
+                    ),
                 )
                 print(f"New invoice ({invoice_number}): {supplier_invoice}")
 
