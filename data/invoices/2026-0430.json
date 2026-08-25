@@ -1,38 +1,38 @@
 {
-  "id": "2026-0429",
-  "number": "2026-0429",
-  "status": "sent_to_signing",
+  "id": "2026-0430",
+  "number": "2026-0430",
+  "status": "pending",
   "supplier": {
-    "name": "Sydkust El AB",
-    "orgNumber": "556210-4471",
-    "registerPhone": "+46 40 118 90 20",
-    "invoicePhone": "+46 40 118 90 20"
+    "name": "Malmgren Städ AB",
+    "orgNumber": "556884-2019",
+    "registerPhone": "+46 8 640 22 70",
+    "invoicePhone": "+46 8 640 22 70"
   },
   "dueDate": "2026-09-02",
-  "amount": { "value": "47900.00", "currency": "SEK" },
+  "amount": { "value": "18750.00", "currency": "SEK" },
   "lines": [
     {
-      "description": "Electrical maintenance, Kv. Almen 4",
+      "description": "Cleaning contract, Kv. Almen 4",
       "period": "2026-07",
       "quantity": 1,
-      "unitPrice": "32000.00",
-      "amount": "32000.00"
+      "unitPrice": "12000.00",
+      "amount": "12000.00"
     },
     {
-      "description": "Emergency lighting inspection",
+      "description": "Window cleaning, stairwells A–C",
       "period": "2026-07",
-      "quantity": 1,
-      "unitPrice": "6320.00",
-      "amount": "6320.00"
+      "quantity": 3,
+      "unitPrice": "1000.00",
+      "amount": "3000.00"
     }
   ],
-  "vat": { "rate": "0.25", "value": "9580.00" },
-  "total": { "value": "47900.00", "currency": "SEK" },
+  "vat": { "rate": "0.25", "value": "3750.00" },
+  "total": { "value": "18750.00", "currency": "SEK" },
   "payment": {
-    "statusLabel": "Sent to signing",
+    "statusLabel": "Ready to pay",
     "paymentDate": "2026-09-02",
-    "account": "552-8890",
-    "approver": "M. Lindqvist"
+    "account": "701-4432",
+    "approver": "Awaiting signature"
   },
   "bankDetailsCheck": {
     "verdict": "pass",
@@ -40,13 +40,13 @@
     "detail": null,
     "engine": "bank-details-check",
     "version": "1.4",
-    "evaluatedAt": "2026-08-25T08:51:00+02:00",
-    "traceId": "2c9f70b1-4ad8-41e6-9f02-71bb54ce8a3d",
+    "evaluatedAt": "2026-08-25T08:47:00+02:00",
+    "traceId": "e07a3c95-1d6b-4f22-93c8-6a4d15be770f",
     "findings": [
       {
         "code": "supplier_identity",
         "title": "Supplier identity matches",
-        "detail": "Org number 556210-4471 on the invoice is the one held in the supplier register.",
+        "detail": "Org number 556884-2019 on the invoice is the one held in the supplier register.",
         "outcome": "match",
         "outcomeLabel": "Matches",
         "sources": ["ERP register"],
@@ -56,7 +56,7 @@
       {
         "code": "vop",
         "title": "VoP (Verification of Payee)",
-        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 552-8890.",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 701-4432.",
         "outcome": "match",
         "outcomeLabel": "Match",
         "sources": ["Receiving bank"],
@@ -72,32 +72,32 @@
         "sources": ["ERP history", "Bank transactions"],
         "mocked": false,
         "evidence": {
-          "registeredAccount": "552-8890",
-          "invoiceAccount": "552-8890",
-          "paymentCount": 14,
+          "registeredAccount": "701-4432",
+          "invoiceAccount": "701-4432",
+          "paymentCount": 19,
           "lastPaidAt": "2026-08-01",
-          "firstSeenAt": "2025-06-12",
-          "rangeFrom": "2025-06",
+          "firstSeenAt": "2025-01-15",
+          "rangeFrom": "2025-01",
           "rangeTo": "2026-08"
         }
       },
       {
         "code": "account_owner",
         "title": "Account owner matches",
-        "detail": "552-8890 resolves to Sydkust El AB 556210-4471.",
+        "detail": "701-4432 resolves to Malmgren Städ AB 556884-2019.",
         "outcome": "match",
         "outcomeLabel": "Matches",
         "sources": ["Account ownership"],
         "mocked": true,
         "evidence": {
           "actual": {
-            "account": "552-8890",
-            "name": "Sydkust El AB",
-            "orgNumber": "556210-4471"
+            "account": "701-4432",
+            "name": "Malmgren Städ AB",
+            "orgNumber": "556884-2019"
           },
           "expected": {
-            "name": "Sydkust El AB",
-            "orgNumber": "556210-4471"
+            "name": "Malmgren Städ AB",
+            "orgNumber": "556884-2019"
           }
         }
       }

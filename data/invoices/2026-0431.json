@@ -106,6 +106,7 @@
     ]
   },
   "actions": {
+    "pay": { "available": false },
     "logVerificationCall": {
       "available": true,
       "callNumber": "+46 8 550 12 40",

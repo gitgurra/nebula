@@ -1,38 +1,38 @@
 {
-  "id": "2026-0429",
-  "number": "2026-0429",
-  "status": "sent_to_signing",
+  "id": "2026-0433",
+  "number": "2026-0433",
+  "status": "pending",
   "supplier": {
-    "name": "Sydkust El AB",
-    "orgNumber": "556210-4471",
-    "registerPhone": "+46 40 118 90 20",
-    "invoicePhone": "+46 40 118 90 20"
+    "name": "Almén Kontorsservice AB",
+    "orgNumber": "556652-3318",
+    "registerPhone": "+46 8 512 33 04",
+    "invoicePhone": "+46 8 512 33 04"
   },
-  "dueDate": "2026-09-02",
-  "amount": { "value": "47900.00", "currency": "SEK" },
+  "dueDate": "2026-09-05",
+  "amount": { "value": "9640.00", "currency": "SEK" },
   "lines": [
     {
-      "description": "Electrical maintenance, Kv. Almen 4",
+      "description": "Office supplies, monthly order",
       "period": "2026-07",
       "quantity": 1,
-      "unitPrice": "32000.00",
-      "amount": "32000.00"
+      "unitPrice": "5312.00",
+      "amount": "5312.00"
     },
     {
-      "description": "Emergency lighting inspection",
+      "description": "Print paper, A4 boxes",
       "period": "2026-07",
-      "quantity": 1,
-      "unitPrice": "6320.00",
-      "amount": "6320.00"
+      "quantity": 6,
+      "unitPrice": "400.00",
+      "amount": "2400.00"
     }
   ],
-  "vat": { "rate": "0.25", "value": "9580.00" },
-  "total": { "value": "47900.00", "currency": "SEK" },
+  "vat": { "rate": "0.25", "value": "1928.00" },
+  "total": { "value": "9640.00", "currency": "SEK" },
   "payment": {
-    "statusLabel": "Sent to signing",
-    "paymentDate": "2026-09-02",
-    "account": "552-8890",
-    "approver": "M. Lindqvist"
+    "statusLabel": "Ready to pay",
+    "paymentDate": "2026-09-05",
+    "account": "339-1180",
+    "approver": "Awaiting signature"
   },
   "bankDetailsCheck": {
     "verdict": "pass",
@@ -40,13 +40,13 @@
     "detail": null,
     "engine": "bank-details-check",
     "version": "1.4",
-    "evaluatedAt": "2026-08-25T08:51:00+02:00",
-    "traceId": "2c9f70b1-4ad8-41e6-9f02-71bb54ce8a3d",
+    "evaluatedAt": "2026-08-25T08:55:00+02:00",
+    "traceId": "6d29b7e4-08fa-4c31-95b7-3ec4172d9a80",
     "findings": [
       {
         "code": "supplier_identity",
         "title": "Supplier identity matches",
-        "detail": "Org number 556210-4471 on the invoice is the one held in the supplier register.",
+        "detail": "Org number 556652-3318 on the invoice is the one held in the supplier register.",
         "outcome": "match",
         "outcomeLabel": "Matches",
         "sources": ["ERP register"],
@@ -56,7 +56,7 @@
       {
         "code": "vop",
         "title": "VoP (Verification of Payee)",
-        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 552-8890.",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 339-1180.",
         "outcome": "match",
         "outcomeLabel": "Match",
         "sources": ["Receiving bank"],
@@ -72,32 +72,32 @@
         "sources": ["ERP history", "Bank transactions"],
         "mocked": false,
         "evidence": {
-          "registeredAccount": "552-8890",
-          "invoiceAccount": "552-8890",
-          "paymentCount": 14,
-          "lastPaidAt": "2026-08-01",
-          "firstSeenAt": "2025-06-12",
-          "rangeFrom": "2025-06",
+          "registeredAccount": "339-1180",
+          "invoiceAccount": "339-1180",
+          "paymentCount": 27,
+          "lastPaidAt": "2026-08-05",
+          "firstSeenAt": "2024-06-03",
+          "rangeFrom": "2024-06",
           "rangeTo": "2026-08"
         }
       },
       {
         "code": "account_owner",
         "title": "Account owner matches",
-        "detail": "552-8890 resolves to Sydkust El AB 556210-4471.",
+        "detail": "339-1180 resolves to Almén Kontorsservice AB 556652-3318.",
         "outcome": "match",
         "outcomeLabel": "Matches",
         "sources": ["Account ownership"],
         "mocked": true,
         "evidence": {
           "actual": {
-            "account": "552-8890",
-            "name": "Sydkust El AB",
-            "orgNumber": "556210-4471"
+            "account": "339-1180",
+            "name": "Almén Kontorsservice AB",
+            "orgNumber": "556652-3318"
           },
           "expected": {
-            "name": "Sydkust El AB",
-            "orgNumber": "556210-4471"
+            "name": "Almén Kontorsservice AB",
+            "orgNumber": "556652-3318"
           }
         }
       }

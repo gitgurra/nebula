@@ -175,6 +175,35 @@ class ZwapgridClient:
         location = response.headers.get("Location", "")
         return location.rstrip("/").rsplit("/", 1)[-1] or None
 
+    def get_supplier_invoice_payments(
+        self, consent_id: str, invoice_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch the payments already registered against one supplier invoice."""
+        payload = self._get(
+            f"{self._settings.accounting_base_url}"
+            f"/api/v1/consents/{consent_id}/supplierinvoices/{invoice_id}/payments"
+        )
+        return payload.get("data") or []
+
+    def create_supplier_invoice_payment(
+        self, consent_id: str, invoice_id: str, payment: dict[str, Any]
+    ) -> str | None:
+        """Register a payment against a supplier invoice, settling it in the ERP.
+
+        This is what moves the invoice to paid in Fortnox: `paymentStatus` cannot be set when
+        the invoice is created, it is derived from the payments booked against it.
+        """
+        response = self._send(
+            "POST",
+            f"{self._settings.accounting_base_url}"
+            f"/api/v1/consents/{consent_id}/supplierinvoices/{invoice_id}/payments",
+            json=payment,
+        )
+        location = response.headers.get("Location", "")
+        if location:
+            return location.rstrip("/").rsplit("/", 1)[-1] or None
+        return (response.json() or {}).get("id") if response.content else None
+
     def create_consent(
         self, name: str, systems_settings: dict[str, str] | None = None
     ) -> str:
@@ -288,6 +317,77 @@ def supplier_invoice_payload(
         "totalBalanceAmount": total,
         "legalMonetaryTotal": {"payableAmount": total, "taxInclusiveAmount": total},
     }
+
+
+def supplier_invoice_payment_payload(
+    reference: str,
+    amount: float,
+    currency: str = "SEK",
+    paid_date: date | None = None,
+    booked: bool = True,
+    bank_account_id: str = "1930",
+) -> dict[str, Any]:
+    """Build a payment body for POST /supplierinvoices/{id}/payments.
+
+    `reference` is where the Open Payments paymentId goes, which is what ties the ledger
+    entry back to the bank payment. `accountingAccount` is the asset account the money left,
+    1930 being the BAS account for a business bank account. Setting `bookedIndicator` marks
+    the payment as booked rather than only registered.
+    """
+    paid = paid_date or date.today()
+    return {
+        "reference": reference,
+        "paidDate": paid.isoformat(),
+        "bookedIndicator": booked,
+        "bookedDate": paid.isoformat() if booked else None,
+        "accountingAccount": {"id": bank_account_id, "reference": bank_account_id},
+        "documentCurrencyCode": {"currencyId": currency},
+        "amount": amount,
+    }
+
+
+def supplier_payee_accounts(supplier: dict[str, Any]) -> list[dict[str, str]]:
+    """List every account a supplier can be paid into.
+
+    Fortnox keeps payee details on the supplier record rather than on the invoice, so these
+    are the values to check against the bank's `creditorAccount` before releasing a payment.
+    A supplier usually has several: a bankgiro, an IBAN and a plain account number are all
+    the same money going to the same place, distinguished by `paymentChannelCode`.
+    """
+    accounts: list[dict[str, str]] = []
+    for means in supplier.get("paymentMeans") or []:
+        channel = (means.get("paymentChannelCode") or "").upper()
+        account = (means.get("financialAccount") or {}).get("id")
+        scheme = ""
+        if not account:
+            for payment_id in means.get("paymentIds") or []:
+                if payment_id.get("id"):
+                    account = payment_id["id"]
+                    scheme = payment_id.get("schemeId") or ""
+                    break
+        if account:
+            accounts.append(
+                {"account": str(account), "schemeId": scheme, "channelCode": channel}
+            )
+    return accounts
+
+
+def supplier_payee_account(supplier: dict[str, Any]) -> dict[str, str] | None:
+    """Pick the account to pay a supplier into, or None if it has none on record.
+
+    Giro is preferred over a raw account number because a bankgiro payment carries the
+    invoice reference through to the supplier's ledger.
+    """
+    accounts = supplier_payee_accounts(supplier)
+    if not accounts:
+        return None
+    priority = ("BG", "PG", "IBAN", "ACCOUNT")
+    return min(
+        accounts,
+        key=lambda entry: priority.index(entry["channelCode"])
+        if entry["channelCode"] in priority
+        else len(priority),
+    )
 
 
 def onboarding_url(

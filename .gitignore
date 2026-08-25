@@ -4,6 +4,10 @@
 *.pem
 *.p12
 
+# Exported ERP data: real supplier names, amounts and bank details
+invoices.json
+suppliers.json
+
 # Python
 __pycache__/
 *.py[cod]
