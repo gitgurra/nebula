@@ -72,11 +72,88 @@ Print the raw JSON responses instead of a summary:
 python -m nebula --json
 ```
 
+## Paying a supplier invoice end to end
+
+`pay-invoice` runs the whole cycle for one invoice: it reads the invoice and the supplier's
+payee account from Fortnox, initiates the payment in the bank, waits for the PSU to approve it
+with BankID, and books the payment back onto the invoice so Fortnox marks it paid.
+
+The three steps are separate systems, and only the last one is reversible, so run the dry run
+first.
+
+### 1. Create the invoice in Zwapgrid
+
+```bash
+python -m nebula zwapgrid_create_invoices --count 1 --supplier-id 2
+```
+
+`--supplier-id` has to be a supplier that already exists in Fortnox — list them with
+`python -m nebula zwapgrid_suppliers`. The command continues the `INV-NNN` series and prints
+the reference it created. Invoices cannot be deleted once created.
+
+The supplier needs a payment account on its record in Fortnox (a bankgiro, plusgiro or IBAN
+under `paymentMeans`). That is where the money will be sent; Fortnox does not keep payee
+details on the invoice itself.
+
+### 2. Fill in the payment settings
+
+Payment initiation needs a PSU and a debtor account, which the read-only calls do not. Set
+these in `.env`:
+
+| Variable | What it is |
+| --- | --- |
+| `OPEN_PAYMENTS_BICFI` | The bank to send the payment to, e.g. `ESSESESS`. `python -m nebula open-payments` lists them. |
+| `OPEN_PAYMENTS_PSU_ID` | The personal number of whoever approves the payment with BankID. |
+| `OPEN_PAYMENTS_PSU_CORPORATE_ID` | The org. number of the company they act for. |
+| `OPEN_PAYMENTS_DEBTOR_IBAN` | The account the money leaves. |
+
+### 3. Check the payment before sending it
+
+```bash
+python -m nebula pay-invoice --invoice INV-007
+```
+
+This sends nothing. It resolves the invoice, the supplier and the payee account, then prints
+the exact request body it would post to Open Payments. Check that the creditor account matches
+the supplier you expect to pay — this is the point where a tampered payee account is visible.
+
+The payment product is chosen from the payee account: a bankgiro or plusgiro (`SE:BG`, `SE:PG`)
+goes out as `swedish-giro`, anything else as `domestic`.
+
+### 4. Send it
+
+```bash
+python -m nebula pay-invoice --invoice INV-007 --send
+```
+
+This runs four calls in order, stopping at the first failure:
+
+1. `POST /psd2/paymentinitiation/v1/payments/{product}` creates the payment. A
+   `CREDITOR_ACCOUNT_FLAGGED` warning here means the creditor is on Svensk Handel's watchlist,
+   and is printed rather than swallowed.
+2. `POST .../authorisations` then `PUT .../authorisations/{id}` starts BankID. **Approve the
+   payment in your banking app** — the command polls the SCA status until it is `finalised` or
+   `failed`, and gives up after three minutes.
+3. `GET .../status` confirms the bank did not reject it (`RJCT`).
+4. `POST /supplierinvoices/{id}/payments` books the payment in Fortnox, using the Open Payments
+   `paymentId` as the payment reference so the ledger entry points back at the bank payment.
+
+The invoice is only booked in Fortnox after the bank has accepted the payment, so a failed
+authorisation leaves the ledger untouched. `--bank-account` sets the asset account the payment
+is booked against, defaulting to `1930`.
+
+Money only moves against a real Fortnox company and a real bank account. Check which consent
+the command prints before using `--send`.
+
 ## Invoices API
 
-A small FastAPI app (`nebula/api.py`) exposes two mocked invoice endpoints — `get_invoices` and
-`pay_invoice`. It's standalone and doesn't need `.env` or real credentials; the data is an
-in-memory seeded list that resets whenever the process restarts.
+A small FastAPI app (`nebula/api.py`) exposes the mocked invoice endpoints behind the screens in
+`index.html`. It's standalone and doesn't need `.env` or real credentials; the list is seeded from
+`data/invoices.json` and the per-invoice details from `data/invoices/*.json`, into memory that
+resets whenever the process restarts.
+
+Every invoice in the list has a detail fixture, so every row opens and can be paid. The exception
+is `2026-0431`, which starts on hold: paying it is refused until a verification call releases it.
 
 ### Running with Docker Compose
 
@@ -102,14 +179,24 @@ uvicorn nebula.api:app --reload --port 8000
 
 | Method | Path                          | Description                                                        |
 | ------ | ----------------------------- | ------------------------------------------------------------------ |
-| GET    | `/invoices`                   | List all mocked invoices.                                          |
-| POST   | `/invoices/{invoice_id}/pay`  | Mark an invoice as paid. Returns `404` if unknown, `409` if already paid. |
+| GET    | `/invoices`                   | List all mocked invoices. `hasDetail` says whether the row opens.   |
+| GET    | `/invoices/{invoice_id}`      | Full detail for one invoice: bank details check findings and the actions it offers. |
+| POST   | `/invoices/{invoice_id}/pay`  | Mark an invoice as paid. `404` if unknown, `409` if already paid or on hold. |
+| POST   | `/invoices/{invoice_id}/verification-call` | Log a call to the supplier's register number and release the hold. `409` if the invoice is not on hold. |
 | GET    | `/health`                     | Basic liveness check.                                              |
 
 ```bash
 curl http://localhost:8000/invoices
-curl -X POST http://localhost:8000/invoices/inv-001/pay
+curl -X POST http://localhost:8000/invoices/2026-0430/pay
+
+# 2026-0431 is on hold: the call is what releases it, so both fields are required
+curl -X POST http://localhost:8000/invoices/2026-0431/verification-call \
+  -H 'Content-Type: application/json' \
+  -d '{"contact":"Erik Nordvik, finance manager","note":"Confirmed the new account is theirs."}'
 ```
+
+The call is recorded as a finding on the invoice, so the reason the hold was released stays
+visible next to the check that raised it.
 
 Interactive docs (Swagger UI) are served at `http://localhost:8000/docs`, and the OpenAPI schema
 at `http://localhost:8000/openapi.json`. To try it in Postman without hand-building requests, use

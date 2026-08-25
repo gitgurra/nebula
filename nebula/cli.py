@@ -6,6 +6,8 @@ import argparse
 import json
 import re
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable
 
 from .config import (
@@ -15,13 +17,20 @@ from .config import (
     load_zwapgrid_settings,
     request_timeout_seconds,
 )
-from .open_payments import OpenPaymentsClient, OpenPaymentsError
+from .open_payments import (
+    OpenPaymentsClient,
+    OpenPaymentsError,
+    domestic_payment_payload,
+    swedish_giro_payment_payload,
+)
 from .zwapgrid import (
     ConsentStatus,
     ZwapgridClient,
     ZwapgridError,
     onboarding_url,
     supplier_invoice_payload,
+    supplier_invoice_payment_payload,
+    supplier_payee_account,
 )
 
 
@@ -42,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
             "zwapgrid_create_invoices",
             "zwapgrid_invoices",
             "zwapgrid_suppliers",
+            "pay-invoice",
         ],
         help="Which sandbox to call. Defaults to 'hello', which calls both.",
     )
@@ -66,6 +76,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Number of invoices to create when running 'zwapgrid_create_invoices'.",
     )
     parser.add_argument(
+        "--out",
+        nargs="?",
+        const="invoices.json",
+        help=(
+            "Write the invoices fetched by 'zwapgrid_invoices' to a JSON file. Defaults to "
+            "invoices.json when the flag is given without a path."
+        ),
+    )
+    parser.add_argument(
         "--supplier-id",
         default="supplier-123",
         help=(
@@ -81,12 +100,41 @@ def main(argv: list[str] | None = None) -> int:
             "(6550 is Konsultarvoden in the Swedish BAS chart)."
         ),
     )
+    parser.add_argument(
+        "--invoice",
+        help="Reference of the supplier invoice to pay with 'pay-invoice', e.g. INV-007.",
+    )
+    parser.add_argument(
+        "--send",
+        action="store_true",
+        help=(
+            "Actually initiate the payment in 'pay-invoice'. Without it the command is a dry "
+            "run that only prints the request it would send."
+        ),
+    )
+    parser.add_argument(
+        "--bank-account",
+        default="1930",
+        help=(
+            "Asset account the payment is booked against in the ERP (1930 is Företagskonto "
+            "in the Swedish BAS chart)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     load_env()
 
     if args.command == "create-consent":
         return 0 if run_create_consent(args.name, args.system) else 1
+
+    if args.command == "pay-invoice":
+        if not args.invoice:
+            parser.error("pay-invoice needs --invoice with the reference of the invoice to pay.")
+        return (
+            0
+            if run_pay_invoice(args.json, args.invoice, args.send, args.bank_account)
+            else 1
+        )
 
     runners: dict[str, list[Callable[[bool], bool]]] = {
         "hello": [run_open_payments, run_zwapgrid],
@@ -97,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
                 as_json, args.count, args.supplier_id, args.account
             )
         ],
-        "zwapgrid_invoices": [zwapgrid_invoices],
+        "zwapgrid_invoices": [lambda as_json: zwapgrid_invoices(as_json, args.out)],
         "zwapgrid_suppliers": [zwapgrid_suppliers],
     }
 
@@ -176,7 +224,7 @@ def run_zwapgrid(as_json: bool) -> bool:
         return _fail(error)
     return True
 
-def zwapgrid_invoices(as_json: bool) -> bool:
+def zwapgrid_invoices(as_json: bool, out: str | None = None) -> bool:
     """Print every sales and supplier invoice on the accepted consent, in full."""
     _header("Zwapgrid: all invoices")
     try:
@@ -192,6 +240,7 @@ def zwapgrid_invoices(as_json: bool) -> bool:
 
             print(f"Using accepted consent {accepted['id']} (source={accepted.get('source')}).")
 
+            collected: dict[str, list[dict[str, Any]]] = {}
             for title, resource in (
                 ("Sales invoices", "salesinvoices"),
                 ("Supplier invoices", "supplierinvoices"),
@@ -202,11 +251,40 @@ def zwapgrid_invoices(as_json: bool) -> bool:
                     print(f"\n{title}: unavailable ({error})")
                     continue
 
+                collected[resource] = invoices
                 print(f"\n{title}: {len(invoices)}")
                 _dump(invoices)
+
+            if out:
+                _save_invoices(out, accepted, collected)
     except (ConfigError, ZwapgridError) as error:
         return _fail(error)
     return True
+
+
+def _save_invoices(
+    path: str, consent: dict[str, Any], invoices: dict[str, list[dict[str, Any]]]
+) -> None:
+    """Write the fetched invoices to the repo root, recording where and when they came from.
+
+    A relative path is resolved against the repo root rather than the working directory, so
+    the file lands in the same place wherever the command is run from. The provenance matters
+    for a fraud check: a stored invoice is only meaningful next to the consent and system it
+    was read from, and the time it was read.
+    """
+    snapshot = {
+        "consentId": consent.get("id"),
+        "source": consent.get("source"),
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "salesInvoices": invoices.get("salesinvoices", []),
+        "supplierInvoices": invoices.get("supplierinvoices", []),
+    }
+    destination = Path(path)
+    if not destination.is_absolute():
+        destination = Path(__file__).resolve().parent.parent / destination
+    destination.write_text(json.dumps(snapshot, indent=2, ensure_ascii=False), encoding="utf-8")
+    total = len(snapshot["salesInvoices"]) + len(snapshot["supplierInvoices"])
+    print(f"\nWrote {total} invoice(s) to {destination.resolve()}")
 
 
 def zwapgrid_suppliers(as_json: bool) -> bool:
@@ -308,6 +386,220 @@ def zwapgrid_create_invoices(
     except (ConfigError, ZwapgridError) as error:
         return _fail(error)
     return True
+
+
+def run_pay_invoice(
+    as_json: bool,
+    reference: str,
+    send: bool = False,
+    bank_account: str = "1930",
+) -> bool:
+    """Pay one supplier invoice: initiate it in the bank, then book it back in the ERP.
+
+    Nothing is sent unless `send` is set. The dry run prints the exact requests, which is the
+    only safe default while the accepted consent points at a real Fortnox company.
+    """
+    _header(f"Pay supplier invoice {reference}")
+    try:
+        op_settings = load_open_payments_settings()
+        zg_settings = load_zwapgrid_settings()
+
+        with ZwapgridClient(zg_settings, timeout=request_timeout_seconds()) as zwapgrid:
+            accepted = zwapgrid.find_accepted_consent()
+            if accepted is None:
+                print(
+                    "No accepted Fortnox consent yet. Run 'python -m nebula create-consent' "
+                    "and complete the Onboarding Flow."
+                )
+                return True
+            consent_id = accepted["id"]
+            print(f"Consent: {consent_id} (source={accepted.get('source')})")
+
+            invoice = _find_supplier_invoice(zwapgrid, consent_id, reference)
+            if invoice is None:
+                return _fail(
+                    RuntimeError(
+                        f"No supplier invoice with reference '{reference}'. Create one with "
+                        "'python -m nebula zwapgrid_create_invoices'."
+                    )
+                )
+
+            amount = _invoice_amount(invoice)
+            if amount is None:
+                return _fail(RuntimeError(f"Invoice {reference} has no payable amount."))
+
+            supplier_id, supplier_name = _invoice_supplier(invoice)
+            payee = _resolve_payee(zwapgrid, consent_id, supplier_id, invoice)
+            if payee is None:
+                return _fail(
+                    RuntimeError(
+                        f"Supplier '{supplier_id}' has no payment account on record, so there "
+                        "is nowhere to send the money. Add one in Fortnox."
+                    )
+                )
+
+            currency = _invoice_currency(invoice)
+            product, payment = _build_payment(
+                op_settings.debtor_iban, payee, supplier_name, amount, currency, reference
+            )
+
+            print(f"\nInvoice:  {reference}  {amount:,.2f} {currency}")
+            print(f"Supplier: {supplier_id}  {supplier_name}")
+            print(f"Payee:    {payee['account']} ({payee['channelCode'] or payee['schemeId']})")
+            print(f"Product:  {product}")
+            print(f"\nPOST /psd2/paymentinitiation/v1/payments/{product}")
+            _dump(payment)
+
+            if not send:
+                print(
+                    "\nDry run. Nothing was sent. Re-run with --send to initiate the payment, "
+                    "authorise it with BankID and book it in Fortnox."
+                )
+                missing = op_settings.missing_payment_settings()
+                if missing:
+                    print(
+                        "\n--send needs these in .env first, because the bank has to know who "
+                        "is authorising the payment and which account to debit:\n  "
+                        + "\n  ".join(missing)
+                    )
+                return True
+
+            with OpenPaymentsClient(op_settings, timeout=request_timeout_seconds()) as bank:
+                created = bank.create_payment(product, payment)
+                payment_id = created.get("paymentId")
+                print(f"\nPayment created: {payment_id} ({created.get('transactionStatus')})")
+                for message in created.get("tppMessages") or []:
+                    print(f"  {message.get('category')}: {message.get('text')}")
+                if not payment_id:
+                    return _fail(RuntimeError("Payment response did not contain a paymentId."))
+
+                print("Authorising. Approve the payment in your banking app.")
+                sca_status = bank.authorise_payment(product, payment_id)
+                print(f"SCA status: {sca_status}")
+                if sca_status != "finalised":
+                    return _fail(RuntimeError(f"Authorisation ended as '{sca_status}'."))
+
+                status = bank.get_payment_status(product, payment_id)
+                transaction_status = status.get("transactionStatus")
+                print(f"Payment status: {transaction_status}")
+                if transaction_status == "RJCT":
+                    return _fail(RuntimeError("The bank rejected the payment."))
+
+            booked = zwapgrid.create_supplier_invoice_payment(
+                consent_id,
+                invoice["id"],
+                supplier_invoice_payment_payload(
+                    reference=payment_id,
+                    amount=amount,
+                    currency=currency,
+                    bank_account_id=bank_account,
+                ),
+            )
+            print(f"\nBooked in Fortnox as payment {booked}, referencing {payment_id}.")
+
+            if as_json:
+                _dump(zwapgrid.get_supplier_invoice_payments(consent_id, invoice["id"]))
+    except (ConfigError, OpenPaymentsError, ZwapgridError) as error:
+        return _fail(error)
+    return True
+
+
+def _find_supplier_invoice(
+    client: ZwapgridClient, consent_id: str, reference: str
+) -> dict[str, Any] | None:
+    """Look up one supplier invoice by its reference and return it in full."""
+    for summary in client.get_all(consent_id, "supplierinvoices"):
+        if str(summary.get("reference") or "") == reference and summary.get("id"):
+            return client.get_invoice(consent_id, "supplierinvoices", summary["id"])
+    return None
+
+
+def _invoice_amount(invoice: dict[str, Any]) -> float | None:
+    """Find what is left to pay on an invoice.
+
+    Fortnox populates these inconsistently: `payableAmount` and `totalBalanceAmount` both come
+    back as 0.00 on an invoice it has not settled, with the real total only in
+    `taxInclusiveAmount`. A zero is therefore treated as absent rather than as a free invoice.
+    """
+    totals = invoice.get("legalMonetaryTotal") or {}
+    for holder in (
+        totals.get("payableAmount") or {},
+        invoice.get("totalBalanceAmount") or {},
+        totals.get("taxInclusiveAmount") or {},
+    ):
+        amount = holder.get("amount")
+        if amount:
+            return float(amount)
+    return None
+
+
+def _invoice_currency(invoice: dict[str, Any]) -> str:
+    currency = (invoice.get("documentCurrencyCode") or {}).get("currencyId")
+    return currency or "SEK"
+
+
+def _invoice_supplier(invoice: dict[str, Any]) -> tuple[str, str]:
+    party = invoice.get("accountingSupplierParty") or {}
+    supplier_id = (party.get("customerAssignedAccountId") or {}).get("id") or ""
+    name = ((party.get("party") or {}).get("partyName") or {}).get("name") or ""
+    return str(supplier_id), str(name)
+
+
+def _resolve_payee(
+    client: ZwapgridClient, consent_id: str, supplier_id: str, invoice: dict[str, Any]
+) -> dict[str, str] | None:
+    """Find the account to pay, preferring the supplier record over the invoice.
+
+    The supplier record is the more trustworthy of the two: an invoice arrives from outside
+    and its payment details can be tampered with, while the supplier record only changes if
+    someone edits it in the ERP.
+    """
+    for supplier in client.get_suppliers(consent_id):
+        identifier = (supplier.get("customerAssignedAccountId") or {}).get("id")
+        if str(identifier or "") == supplier_id:
+            payee = supplier_payee_account(supplier)
+            if payee:
+                return payee
+            break
+    return supplier_payee_account(invoice)
+
+
+def _build_payment(
+    debtor_iban: str,
+    payee: dict[str, str],
+    creditor_name: str,
+    amount: float,
+    currency: str,
+    reference: str,
+) -> tuple[str, dict[str, Any]]:
+    """Pick the payment product the payee account calls for and build its body.
+
+    Fortnox labels the account with `paymentChannelCode` (BG, PG, IBAN) and leaves schemeId
+    empty; an invoice written by this tool carries a schemeId instead. Both are checked so a
+    bankgiro is never mistaken for an IBAN and paid as a plain transfer.
+    """
+    giro_types = {"BG": "BANKGIRO", "PG": "PLUSGIRO", "SE:BG": "BANKGIRO", "SE:PG": "PLUSGIRO"}
+    giro_type = giro_types.get(payee["channelCode"].upper()) or giro_types.get(
+        payee["schemeId"].upper()
+    )
+    if giro_type:
+        return "swedish-giro", swedish_giro_payment_payload(
+            debtor_iban=debtor_iban,
+            giro_number=payee["account"],
+            giro_type=giro_type,
+            creditor_name=creditor_name,
+            amount=amount,
+            currency=currency,
+            invoice_reference=reference,
+        )
+    return "domestic", domestic_payment_payload(
+        debtor_iban=debtor_iban,
+        creditor_iban=payee["account"],
+        creditor_name=creditor_name,
+        amount=amount,
+        currency=currency,
+        remittance_information=reference,
+    )
 
 
 def run_create_consent(name: str, system: str) -> bool:

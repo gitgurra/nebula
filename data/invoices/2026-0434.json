@@ -5,45 +5,43 @@
   "supplier": {
     "name": "Rydell Måleri AB",
     "orgNumber": "556129-8804",
-    "registerPhone": "+46 8 730 66 21",
-    "invoicePhone": "+46 8 730 66 21"
+    "registerPhone": "+46 8 668 90 22",
+    "invoicePhone": "+46 8 668 90 22"
   },
   "dueDate": "2026-09-08",
   "amount": { "value": "76100.00", "currency": "SEK" },
   "lines": [
     {
-      "description": "Repainting, stairwell A",
+      "description": "Repainting stairwells A–C",
       "period": "2026-07",
       "quantity": 1,
-      "unitPrice": "42000.00",
-      "amount": "42000.00"
+      "unitPrice": "48000.00",
+      "amount": "48000.00"
     },
     {
       "description": "Facade touch-up, north side",
       "period": "2026-07",
       "quantity": 1,
-      "unitPrice": "14880.00",
-      "amount": "14880.00"
-    },
-    {
-      "description": "Scaffolding hire, 8 days",
-      "period": "2026-07",
-      "quantity": 8,
-      "unitPrice": "500.00",
-      "amount": "4000.00"
+      "unitPrice": "12880.00",
+      "amount": "12880.00"
     }
   ],
   "vat": { "rate": "0.25", "value": "15220.00" },
   "total": { "value": "76100.00", "currency": "SEK" },
-  "payment": null,
+  "payment": {
+    "statusLabel": "Ready to pay",
+    "paymentDate": "2026-09-08",
+    "account": "145-9032",
+    "approver": "Awaiting signature"
+  },
   "bankDetailsCheck": {
     "verdict": "pass",
     "headline": null,
     "detail": null,
     "engine": "bank-details-check",
     "version": "1.4",
-    "evaluatedAt": "2026-08-25T08:29:00+02:00",
-    "traceId": "8f2e653d-3596-4846-9240-e1311f321881",
+    "evaluatedAt": "2026-08-25T08:58:00+02:00",
+    "traceId": "f83d5a02-6c47-4b8e-a01d-52b9e7c34f16",
     "findings": [
       {
         "code": "supplier_identity",
@@ -58,7 +56,7 @@
       {
         "code": "vop",
         "title": "VoP (Verification of Payee)",
-        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 194-7728.",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 145-9032.",
         "outcome": "match",
         "outcomeLabel": "Match",
         "sources": ["Receiving bank"],
@@ -74,11 +72,11 @@
         "sources": ["ERP history", "Bank transactions"],
         "mocked": false,
         "evidence": {
-          "registeredAccount": "194-7728",
-          "invoiceAccount": "194-7728",
-          "paymentCount": 6,
-          "lastPaidAt": "2026-07-30",
-          "firstSeenAt": "2025-11-03",
+          "registeredAccount": "145-9032",
+          "invoiceAccount": "145-9032",
+          "paymentCount": 8,
+          "lastPaidAt": "2026-07-08",
+          "firstSeenAt": "2025-11-19",
           "rangeFrom": "2025-11",
           "rangeTo": "2026-07"
         }
@@ -86,14 +84,14 @@
       {
         "code": "account_owner",
         "title": "Account owner matches",
-        "detail": "194-7728 resolves to Rydell Måleri AB 556129-8804.",
+        "detail": "145-9032 resolves to Rydell Måleri AB 556129-8804.",
         "outcome": "match",
         "outcomeLabel": "Matches",
         "sources": ["Account ownership"],
         "mocked": true,
         "evidence": {
           "actual": {
-            "account": "194-7728",
+            "account": "145-9032",
             "name": "Rydell Måleri AB",
             "orgNumber": "556129-8804"
           },
@@ -106,6 +104,7 @@
     ]
   },
   "actions": {
+    "pay": { "available": true },
     "logVerificationCall": { "available": false },
     "keepOnHold": { "available": false },
     "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }

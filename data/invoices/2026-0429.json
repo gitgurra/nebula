@@ -104,6 +104,7 @@
     ]
   },
   "actions": {
+    "pay": { "available": true },
     "logVerificationCall": { "available": false },
     "keepOnHold": { "available": false },
     "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }

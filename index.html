@@ -80,6 +80,9 @@
   .invoice-table tbody { font-variant-numeric: tabular-nums; }
   .invoice-table tbody tr { cursor: pointer; }
   .invoice-table tbody tr:hover { background: var(--crumb-bg); }
+  /* Rows without a detail fixture are not links anywhere. */
+  .invoice-table tbody tr[data-detail="none"] { cursor: default; color: rgba(29, 31, 32, 0.5); }
+  .invoice-table tbody tr[data-detail="none"]:hover { background: transparent; }
   .invoice-table td.num { font-family: var(--mono); }
   .invoice-table td.amount { text-align: right; font-family: var(--mono); }
   .invoice-table td.supplier { border-left: 2px solid transparent; }
@@ -88,6 +91,8 @@
     font-family: var(--font-heading); font-weight: 600; font-size: 12px;
     letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber-ink);
   }
+  .invoice-table tr[data-status="paid"] td.status,
+  .invoice-table tr[data-status="verified"] td.status { color: var(--color-accent-700); }
 
   /* — detail header — */
   .detail-head { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
@@ -106,6 +111,8 @@
   .verdict p { font-size: 13.5px; margin: 6px 0 0; color: rgba(29, 31, 32, 0.72); }
   .verdict.is-pass { border-color: var(--rule); background: transparent; }
   .verdict.is-pass .verdict-tag { color: var(--color-accent-700); }
+  .verdict.is-verified { border-color: var(--color-accent-400); background: var(--color-accent-100); }
+  .verdict.is-verified .verdict-tag { color: var(--color-accent-800); }
 
   /* — payment strip (clean invoices) — */
   .pay-strip {
@@ -118,6 +125,7 @@
     letter-spacing: 0.1em; text-transform: uppercase; color: rgba(29, 31, 32, 0.5);
   }
   .pay-v { font-family: var(--mono); font-size: 15px; margin-top: 2px; }
+  .pay-strip.is-paid .pay-v-status { color: var(--color-accent-700); }
 
   /* — findings — */
   .findings { margin-top: 26px; }
@@ -183,22 +191,31 @@
   .dot-held { width: 7px; height: 7px; background: var(--amber-line); display: block; }
   .dots-note { font-size: 12px; color: rgba(29, 31, 32, 0.55); margin-top: 7px; }
 
-  /* — call panel — */
-  .call-panel {
+  /* — action panels: call the supplier, or pay — */
+  .act-panel {
     max-width: 900px; margin-top: 30px; padding: 20px 22px;
     display: grid; grid-template-columns: 1fr 268px; gap: 26px; align-items: center;
   }
-  .call-k {
+  .act-k {
     font-family: var(--font-heading); font-weight: 600; font-size: 11px;
     letter-spacing: 0.1em; text-transform: uppercase; color: rgba(29, 31, 32, 0.5);
   }
-  .call-number { font-family: var(--mono); font-size: 26px; font-variant-numeric: tabular-nums; margin-top: 3px; }
-  .call-note { font-size: 13px; line-height: 1.5; margin-top: 6px; color: rgba(29, 31, 32, 0.7); }
-  .call-actions { display: flex; flex-direction: column; gap: 8px; }
+  .act-figure { font-family: var(--mono); font-size: 26px; font-variant-numeric: tabular-nums; margin-top: 3px; }
+  .act-copy { font-size: 13px; line-height: 1.5; margin-top: 6px; color: rgba(29, 31, 32, 0.7); }
+  .act-buttons { display: flex; flex-direction: column; gap: 8px; }
   .action-note {
     margin-top: 14px; padding: 10px 12px; font-size: 13px;
     border-left: 2px solid var(--color-accent); background: var(--color-surface);
   }
+
+  /* — verification call form — */
+  .call-form {
+    max-width: 900px; margin-top: 14px; padding: 16px 18px;
+    border: 1px solid var(--rule); background: var(--color-bg);
+  }
+  .call-form .field { margin-top: 12px; max-width: 560px; }
+  .call-form-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .call-form-error { font-size: 13px; margin-top: 10px; color: var(--amber-ink); }
 
   /* — lines, totals, footer — */
   details.block { margin-top: 28px; }
@@ -261,6 +278,8 @@ const API_BASE = "http://localhost:8000";
 const API = {
   list:   `${API_BASE}/invoices`,
   detail: (id) => `${API_BASE}/invoices/${encodeURIComponent(id)}`,
+  pay:    (id) => `${API_BASE}/invoices/${encodeURIComponent(id)}/pay`,
+  call:   (id) => `${API_BASE}/invoices/${encodeURIComponent(id)}/verification-call`,
 };
 
 const view    = document.getElementById("view");
@@ -286,6 +305,27 @@ async function getJSON(url) {
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
   return res.json();
+}
+
+/* FastAPI reports refusals as a string in `detail` and validation errors as a
+   list of them, and both are worth showing verbatim: they say why the payment
+   was refused. */
+function apiMessage(payload, res) {
+  const detail = payload && payload.detail;
+  if (Array.isArray(detail)) return detail.map((d) => d.msg).join("; ");
+  if (typeof detail === "string") return detail;
+  return `${res.status} ${res.statusText}`;
+}
+
+async function postJSON(url, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const payload = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(apiMessage(payload, res));
+  return payload;
 }
 
 /* ── shell chrome ─────────────────────────────────────────────────────── */
@@ -323,7 +363,10 @@ function renderList(payload) {
         </thead>
         <tbody>
           ${rows.map((r) => `
-            <tr data-invoice-row="${r.status === "hold" ? "hold" : "default"}" data-id="${esc(r.id)}">
+            <tr data-invoice-row="${r.status === "hold" ? "hold" : "default"}"
+                data-status="${esc(r.status)}"
+                data-detail="${r.hasDetail ? "yes" : "none"}"
+                ${r.hasDetail ? `data-id="${esc(r.id)}"` : ""}>
               <td class="supplier">${esc(r.supplier.name)}</td>
               <td class="num">${esc(r.number)}</td>
               <td class="num">${esc(r.dueDate)}</td>
@@ -416,9 +459,74 @@ function renderFinding(f, index) {
 
 /* ── detail screen ────────────────────────────────────────────────────── */
 
-function renderDetail(inv) {
+/* Paying is offered by the API, not decided here: an invoice on hold has no
+   pay action until a verification call releases it. */
+function renderPayPanel(inv, verified) {
+  const account = inv.payment && inv.payment.account;
+  const date = inv.payment && inv.payment.paymentDate;
+  return `
+    <div class="blueprint act-panel">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div>
+        <div class="act-k">Pay this invoice</div>
+        <div class="act-figure">${fmt(inv.total.value)} ${esc(inv.total.currency)}</div>
+        <div class="act-copy">
+          To ${esc(account || "the account on the invoice")}${date ? `, on ${esc(date)}` : ""}.
+          ${verified
+            ? "Released after the verification call — the account change is confirmed."
+            : "Every bank details check passed on this invoice."}
+        </div>
+      </div>
+      <div class="act-buttons">
+        <button class="btn btn-primary btn-block" data-act="pay">Pay invoice</button>
+      </div>
+    </div>`;
+}
+
+function renderCallPanel(inv) {
+  const call = inv.actions.logVerificationCall;
+  return `
+    <div class="blueprint act-panel">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div>
+        <div class="act-k">Call the supplier on the register number</div>
+        <div class="act-figure">${esc(call.callNumber)}</div>
+        <div class="act-copy">${esc(call.detail)}</div>
+      </div>
+      <div class="act-buttons">
+        <button class="btn btn-primary btn-block" data-act="call">Log verification call</button>
+        <button class="btn btn-secondary btn-block" data-act="hold">Keep on hold</button>
+      </div>
+    </div>
+    <form class="call-form" id="call-form" hidden>
+      <div class="act-k">What the call established</div>
+      <div class="field">
+        <label for="call-contact">Who you spoke to</label>
+        <input class="input" id="call-contact" autocomplete="off"
+               placeholder="Name and role at ${esc(inv.supplier.name)}">
+      </div>
+      <div class="field">
+        <label for="call-note">What they confirmed</label>
+        <textarea class="input" id="call-note"
+                  placeholder="Whether the account change is theirs, and why it changed"></textarea>
+      </div>
+      <div class="call-form-actions">
+        <button class="btn btn-primary" type="submit">Log call and release hold</button>
+        <button class="btn btn-secondary" type="button" data-act="cancel-call">Cancel</button>
+      </div>
+      <div class="call-form-error" id="call-error"></div>
+    </form>`;
+}
+
+function renderDetail(inv, flash) {
   const c = inv.bankDetailsCheck || {};
   const held = inv.status === "hold";
+  const paid = inv.status === "paid";
+  const verified = c.verdict === "verified";
+  const canPay = Boolean(inv.actions && inv.actions.pay && inv.actions.pay.available);
+  const canCall = Boolean(
+    inv.actions && inv.actions.logVerificationCall && inv.actions.logVerificationCall.available
+  );
   const findings = c.findings || [];
   const firstFlagged = findings.findIndex((f) => f.outcome !== "match");
   const net = (inv.lines || []).reduce((sum, l) => sum + Number(l.amount), 0);
@@ -443,6 +551,11 @@ function renderDetail(inv) {
           <div class="verdict-tag">Hold</div>
           <h3>${esc(c.headline)}</h3>
           <p>${esc(c.detail)}</p>
+        </div>` : verified ? `
+        <div class="verdict is-verified">
+          <div class="verdict-tag">Verified</div>
+          <h3>${esc(c.headline)}</h3>
+          <p>${esc(c.detail)}</p>
         </div>` : `
         <div class="verdict is-pass">
           <div class="verdict-tag">${esc(c.verdict)}</div>
@@ -450,8 +563,8 @@ function renderDetail(inv) {
         </div>`}
 
       ${inv.payment ? `
-        <div class="pay-strip">
-          <div><div class="pay-k">Status</div><div class="pay-v">${esc(inv.payment.statusLabel)}</div></div>
+        <div class="pay-strip ${paid ? "is-paid" : ""}">
+          <div><div class="pay-k">Status</div><div class="pay-v pay-v-status">${esc(inv.payment.statusLabel)}</div></div>
           <div><div class="pay-k">Payment date</div><div class="pay-v">${esc(inv.payment.paymentDate)}</div></div>
           <div><div class="pay-k">Account</div><div class="pay-v">${esc(inv.payment.account)}</div></div>
           <div><div class="pay-k">Approver</div><div class="pay-v">${esc(inv.payment.approver)}</div></div>
@@ -464,20 +577,9 @@ function renderDetail(inv) {
           ${renderFinding(f, i)}`).join("")}
       </div>
 
-      ${inv.actions && inv.actions.logVerificationCall && inv.actions.logVerificationCall.available ? `
-        <div class="blueprint call-panel">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <div>
-            <div class="call-k">Call the supplier on the register number</div>
-            <div class="call-number">${esc(inv.actions.logVerificationCall.callNumber)}</div>
-            <div class="call-note">${esc(inv.actions.logVerificationCall.detail)}</div>
-          </div>
-          <div class="call-actions">
-            <button class="btn btn-primary btn-block" data-act="call">Log verification call</button>
-            <button class="btn btn-secondary btn-block" data-act="hold">Keep on hold</button>
-          </div>
-        </div>
-        <div id="action-note"></div>` : ""}
+      ${canPay ? renderPayPanel(inv, verified) : ""}
+      ${canCall ? renderCallPanel(inv) : ""}
+      <div id="action-note">${flash ? `<div class="action-note">${esc(flash)}</div>` : ""}</div>
 
       <details class="block">
         <summary>Invoice lines (${(inv.lines || []).length})</summary>
@@ -526,14 +628,88 @@ function renderDetail(inv) {
 
   const note = document.getElementById("action-note");
   const say = (text) => { if (note) note.innerHTML = `<div class="action-note">${esc(text)}</div>`; };
-  const messages = {
-    call: "Call logged to the audit trail. Outcome pending — the hold stays until someone records what the supplier said.",
-    hold: "Kept on hold. The invoice stays out of the signing queue and the supplier is not notified.",
-    override: "Override requested. It needs a written reason and a second approver before the payment can be released.",
+  const form = document.getElementById("call-form");
+  const formError = document.getElementById("call-error");
+
+  const acts = {
+    pay: async (button) => {
+      button.disabled = true;
+      say("Sending the payment…");
+      try {
+        const result = await postJSON(API.pay(inv.id));
+        await reloadDetail(inv.id,
+          `Paid ${fmt(result.paid_amount.value)} ${result.paid_amount.currency} to ` +
+          `${inv.supplier.name}. The payment is booked against the invoice.`);
+      } catch (error) {
+        button.disabled = false;
+        say(`Payment failed: ${error.message}`);
+      }
+    },
+    call: () => {
+      form.hidden = false;
+      document.getElementById("call-contact").focus();
+    },
+    "cancel-call": () => {
+      form.hidden = true;
+      formError.textContent = "";
+    },
+    hold: () => {
+      if (form) form.hidden = true;
+      say("Kept on hold. The invoice stays out of the signing queue and the supplier is not notified.");
+    },
+    override: () => say(
+      "Override requested. It needs a written reason and a second approver before the payment can be released."
+    ),
   };
-  view.querySelectorAll("[data-act]").forEach((b) => {
-    b.addEventListener("click", () => say(messages[b.dataset.act]));
+
+  view.querySelectorAll("[data-act]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const act = acts[button.dataset.act];
+      if (act) act(button);
+    });
   });
+
+  /* The call is what releases the hold, so both fields are required: an empty
+     note would put the invoice back in the signing queue with no evidence. */
+  if (form) {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const contact = document.getElementById("call-contact").value.trim();
+      const callNote = document.getElementById("call-note").value.trim();
+      if (!contact || !callNote) {
+        formError.textContent = "Both fields are needed — the call is the evidence for releasing the hold.";
+        return;
+      }
+      const submit = form.querySelector("[type=submit]");
+      submit.disabled = true;
+      formError.textContent = "";
+      try {
+        await postJSON(API.call(inv.id), { contact, note: callNote });
+        await reloadDetail(inv.id,
+          `Call with ${contact} logged to the audit trail. The hold is released and the invoice can be paid.`);
+      } catch (error) {
+        submit.disabled = false;
+        formError.textContent = error.message;
+      }
+    });
+  }
+}
+
+/* After an action the sidebar counts and the list are both stale. */
+async function reloadDetail(id, flash) {
+  listCache = null;
+  try {
+    listCache = await getJSON(API.list);
+    paintShell(listCache.meta);
+  } catch (error) {
+    /* The refreshed detail below is the point; the sidebar can lag. */
+  }
+
+  try {
+    renderDetail(await getJSON(API.detail(id)), flash);
+  } catch (error) {
+    renderError(error, API.detail(id));
+  }
 }
 
 /* ── states ───────────────────────────────────────────────────────────── */

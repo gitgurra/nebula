@@ -27,6 +27,34 @@ class OpenPaymentsSettings:
     api_base_url: str
     scope: str
     iso_country_codes: tuple[str, ...]
+    pis_scope: str
+    bicfi: str
+    psu_id: str
+    psu_corporate_id: str
+    psu_ip_address: str
+    psu_user_agent: str
+    debtor_iban: str
+
+    def missing_payment_settings(self) -> list[str]:
+        """Report which payment initiation variables are unset, without failing.
+
+        Only payment initiation needs these: the bank has to know which customer is
+        authorising the payment and which account to debit. The read-only calls do not.
+        """
+        return [
+            name
+            for name, value in (
+                ("OPEN_PAYMENTS_BICFI", self.bicfi),
+                ("OPEN_PAYMENTS_PSU_ID", self.psu_id),
+                ("OPEN_PAYMENTS_PSU_CORPORATE_ID", self.psu_corporate_id),
+                ("OPEN_PAYMENTS_DEBTOR_IBAN", self.debtor_iban),
+            )
+            if not value
+        ]
+
+    def require_payment_settings(self) -> None:
+        """Fail early when payment initiation is missing the PSU context the bank requires."""
+        _raise_if_missing(self.missing_payment_settings())
 
 
 @dataclass(frozen=True)
@@ -60,6 +88,13 @@ def load_open_payments_settings() -> OpenPaymentsSettings:
         ).rstrip("/"),
         scope=_optional("OPEN_PAYMENTS_SCOPE", "aspspinformation corporate"),
         iso_country_codes=_csv("OPEN_PAYMENTS_ISO_COUNTRY_CODES", "SE"),
+        pis_scope=_optional("OPEN_PAYMENTS_PIS_SCOPE", "paymentinitiation corporate"),
+        bicfi=_optional("OPEN_PAYMENTS_BICFI", ""),
+        psu_id=_optional("OPEN_PAYMENTS_PSU_ID", ""),
+        psu_corporate_id=_optional("OPEN_PAYMENTS_PSU_CORPORATE_ID", ""),
+        psu_ip_address=_optional("OPEN_PAYMENTS_PSU_IP_ADDRESS", "127.0.0.1"),
+        psu_user_agent=_optional("OPEN_PAYMENTS_PSU_USER_AGENT", "nebula/0.1"),
+        debtor_iban=_optional("OPEN_PAYMENTS_DEBTOR_IBAN", ""),
     )
 
 

@@ -5,38 +5,43 @@
   "supplier": {
     "name": "Almén Kontorsservice AB",
     "orgNumber": "556652-3318",
-    "registerPhone": "+46 8 550 40 90",
-    "invoicePhone": "+46 8 550 40 90"
+    "registerPhone": "+46 8 512 33 04",
+    "invoicePhone": "+46 8 512 33 04"
   },
   "dueDate": "2026-09-05",
   "amount": { "value": "9640.00", "currency": "SEK" },
   "lines": [
     {
-      "description": "Office supplies, July",
+      "description": "Office supplies, monthly order",
       "period": "2026-07",
       "quantity": 1,
-      "unitPrice": "4512.00",
-      "amount": "4512.00"
+      "unitPrice": "5312.00",
+      "amount": "5312.00"
     },
     {
-      "description": "Printer toner, HP 26X",
+      "description": "Print paper, A4 boxes",
       "period": "2026-07",
-      "quantity": 4,
-      "unitPrice": "800.00",
-      "amount": "3200.00"
+      "quantity": 6,
+      "unitPrice": "400.00",
+      "amount": "2400.00"
     }
   ],
   "vat": { "rate": "0.25", "value": "1928.00" },
   "total": { "value": "9640.00", "currency": "SEK" },
-  "payment": null,
+  "payment": {
+    "statusLabel": "Ready to pay",
+    "paymentDate": "2026-09-05",
+    "account": "339-1180",
+    "approver": "Awaiting signature"
+  },
   "bankDetailsCheck": {
     "verdict": "pass",
     "headline": null,
     "detail": null,
     "engine": "bank-details-check",
     "version": "1.4",
-    "evaluatedAt": "2026-08-25T08:17:00+02:00",
-    "traceId": "38d09bf6-7455-470e-8a9c-861cd28205a3",
+    "evaluatedAt": "2026-08-25T08:55:00+02:00",
+    "traceId": "6d29b7e4-08fa-4c31-95b7-3ec4172d9a80",
     "findings": [
       {
         "code": "supplier_identity",
@@ -51,7 +56,7 @@
       {
         "code": "vop",
         "title": "VoP (Verification of Payee)",
-        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 881-3360.",
+        "detail": "The receiving bank confirms the payee name on the instruction matches the holder of 339-1180.",
         "outcome": "match",
         "outcomeLabel": "Match",
         "sources": ["Receiving bank"],
@@ -67,26 +72,26 @@
         "sources": ["ERP history", "Bank transactions"],
         "mocked": false,
         "evidence": {
-          "registeredAccount": "881-3360",
-          "invoiceAccount": "881-3360",
+          "registeredAccount": "339-1180",
+          "invoiceAccount": "339-1180",
           "paymentCount": 27,
-          "lastPaidAt": "2026-08-06",
-          "firstSeenAt": "2024-02-14",
-          "rangeFrom": "2024-02",
+          "lastPaidAt": "2026-08-05",
+          "firstSeenAt": "2024-06-03",
+          "rangeFrom": "2024-06",
           "rangeTo": "2026-08"
         }
       },
       {
         "code": "account_owner",
         "title": "Account owner matches",
-        "detail": "881-3360 resolves to Almén Kontorsservice AB 556652-3318.",
+        "detail": "339-1180 resolves to Almén Kontorsservice AB 556652-3318.",
         "outcome": "match",
         "outcomeLabel": "Matches",
         "sources": ["Account ownership"],
         "mocked": true,
         "evidence": {
           "actual": {
-            "account": "881-3360",
+            "account": "339-1180",
             "name": "Almén Kontorsservice AB",
             "orgNumber": "556652-3318"
           },
@@ -99,6 +104,7 @@
     ]
   },
   "actions": {
+    "pay": { "available": true },
     "logVerificationCall": { "available": false },
     "keepOnHold": { "available": false },
     "release": { "available": false, "requiresReason": true, "requiresSecondApprover": true }
